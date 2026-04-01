@@ -408,7 +408,7 @@ def diagnose():
 
     print(f"\n{SEP}\nPolar.sh — Products\n{SEP}")
     try:
-        products = polar_get("/products", {"limit": 100, "is_archived": False}).get("items", [])
+        products = polar_get("/products", {"limit": 100}).get("items", [])
         for p in products:
             tmpl = template_name(p["name"])
             print(f"  [{tmpl}]  {p['name']}  id={p['id']}")
@@ -510,7 +510,7 @@ def main():
     products         = []
     paid_tmpl_info   = {}   # {template_name: price}
     try:
-        products       = polar_get("/products", {"limit": 100}).get("items", [])
+        products       = polar_get("/products", {"limit": 100, "is_archived": False}).get("items", [])
         paid_tmpl_info = discover_paid_templates(products)
         print(f"   {len(paid_tmpl_info)} paid templates auto-discovered:")
         for t, p in sorted(paid_tmpl_info.items()):
