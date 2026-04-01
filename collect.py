@@ -85,6 +85,8 @@ def discover_paid_templates(products):
     tier_prices = defaultdict(dict)   # {tmpl: {"basic": $, "full_site": $, "unlimited": $}}
 
     for p in products:
+        if p.get("is_archived"):
+            continue
         name     = p.get("name", "")
         tmpl     = template_name(name)
         name_lc  = name.lower()
@@ -406,7 +408,7 @@ def diagnose():
 
     print(f"\n{SEP}\nPolar.sh — Products\n{SEP}")
     try:
-        products = polar_get("/products", {"limit": 100}).get("items", [])
+        products = polar_get("/products", {"limit": 100, "is_archived": False}).get("items", [])
         for p in products:
             tmpl = template_name(p["name"])
             print(f"  [{tmpl}]  {p['name']}  id={p['id']}")
