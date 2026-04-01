@@ -44,7 +44,7 @@ AUTHOR_NAME = "Easyfast"
 
 CSV_HEADERS = [
     "date","template","rank","change_1d",
-    "price_type","price","checkouts","orders","revenue","conversion",
+    "price_type","price","checkouts","orders","revenue","conversion","visitors",
 ]
 
 # ── Polar.sh ──────────────────────────────────────────────────────────────────
