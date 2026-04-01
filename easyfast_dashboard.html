@@ -55,7 +55,7 @@
   .table-wrap { padding: 0 calc(var(--px) - 8px) 64px; }
   .table-header {
     display: grid;
-    grid-template-columns: 64px 1fr 56px 64px 80px 56px 84px 68px;
+    grid-template-columns: 64px 1fr 56px 64px 80px 56px 84px 68px 60px;
     padding: 10px 8px; margin-top: 8px;
   }
   .table-header span { font-size: 10.5px; color: #ccc; text-transform: uppercase; letter-spacing: 0.6px; cursor: pointer; user-select: none; transition: color 0.15s; }
@@ -63,7 +63,7 @@
   .table-header span.sorted { color: #111; font-weight: 600; }
   .th-r { text-align: right; }
 
-  .row { display: grid; grid-template-columns: 64px 1fr 56px 64px 80px 56px 84px 68px; padding: 10px 8px; border-radius: 8px; transition: background 0.1s; align-items: center; }
+  .row { display: grid; grid-template-columns: 64px 1fr 56px 64px 80px 56px 84px 68px 60px; padding: 10px 8px; border-radius: 8px; transition: background 0.1s; align-items: center; }
   .row:hover { background: #fafafa; }
 
   .rank-num { font-size: 14px; font-weight: 600; color: #111; }
@@ -156,6 +156,7 @@
     <span class="th-r"  id="th-orders"     onclick="setSort('orders')">Orders</span>
     <span class="th-r"  id="th-revenue"    onclick="setSort('revenue')">Revenue</span>
     <span class="th-r"  id="th-conversion" onclick="setSort('conversion')">Conv.</span>
+    <span class="th-r"  id="th-visitors"   onclick="setSort('visitors')">Visitors</span>
   </div>
   <div id="rows-container"></div>
 </div>
@@ -164,42 +165,58 @@
 
 <script>
 // ── EMBEDDED DATA (auto-updated by scheduled task) ────────────────────────
-const EMBEDDED_CSV = `date,template,rank,change_1d,price_type,price,checkouts,orders,revenue,conversion
-2026-03-30,Bravo,1745,0,free,0,,,,
-2026-03-30,Cello,1202,-2,paid,89,12,0,0,0
-2026-03-30,Deliver,1549,0,free,0,,,,
-2026-03-30,Fargo,991,0,free,0,,,,
-2026-03-30,Gibson,2237,0,free,0,,,,
-2026-03-30,Hanzo,339,0,free,0,,,,
-2026-03-30,Haze,2185,0,free,0,,,,
-2026-03-30,Makro,1054,8,paid,129,11,2,258,18.18
-2026-03-30,Nitro,67,0,free,0,,,,
-2026-03-30,Pager,1637,0,free,0,,,,
-2026-03-30,Quattro,1695,0,free,0,,,,
-2026-03-30,Quorum,1080,46,paid,129,10,0,0,0
-2026-03-30,Strida,1999,0,free,0,,,,
-2026-03-30,Taro,1019,0,free,0,,,,
-2026-03-30,Trifold,2145,0,free,0,,,,
-2026-03-31,Bravo,1683,62,free,0,,,,
-2026-03-31,Cello,1222,-20,paid,89,1,0,0,0
-2026-03-31,Deliver,1787,-238,free,0,,,,
-2026-03-31,Fargo,763,228,free,0,,,,
-2026-03-31,Gibson,2335,-98,free,0,,,,
-2026-03-31,Hanzo,309,30,free,0,,,,
-2026-03-31,Haze,2347,-162,free,0,,,,
-2026-03-31,Makro,958,96,paid,129,2,1,179,50
-2026-03-31,Nitro,63,4,free,0,,,,
-2026-03-31,Pager,1209,428,free,0,,,,
-2026-03-31,Quattro,1769,-74,free,0,,,,
-2026-03-31,Quorum,1072,8,paid,129,1,0,0,0
-2026-03-31,Strida,2003,-4,free,0,,,,
-2026-03-31,Taro,1263,-244,free,0,,,,
-2026-03-31,Trifold,2171,-26,free,0,,,,
-2026-04-01,Cello,546,676,paid,89,0,0,0.0,0.0
-2026-04-01,Dispatch,,,paid,149,0,0,0.0,0.0
-2026-04-01,Makro,832,126,paid,129,4,1,129.0,25.0
-2026-04-01,Powder,,,paid,129,0,0,0.0,0.0
-2026-04-01,Quorum,344,728,paid,129,1,0,0.0,0.0`;
+const EMBEDDED_CSV = `date,template,rank,change_1d,price_type,price,checkouts,orders,revenue,conversion,visitors
+2026-03-30,Bravo,1745,0,free,0,,,,,
+2026-03-30,Cello,1202,-2,paid,89,12,0,0,0,45
+2026-03-30,Deliver,1549,0,free,0,,,,,
+2026-03-30,Dispatch,,,paid,,,,,,11
+2026-03-30,Fargo,991,0,free,0,,,,,
+2026-03-30,Gibson,2237,0,free,0,,,,,
+2026-03-30,Hanzo,339,0,free,0,,,,,
+2026-03-30,Haze,2185,0,free,0,,,,,
+2026-03-30,Makro,1054,8,paid,129,11,2,258,18.18,60
+2026-03-30,Nitro,67,0,free,0,,,,,
+2026-03-30,Pager,1637,0,free,0,,,,,
+2026-03-30,Powder,,,paid,,,,,,4
+2026-03-30,Quattro,1695,0,free,0,,,,,
+2026-03-30,Quorum,1080,46,paid,129,10,0,0,0,34
+2026-03-30,Strida,1999,0,free,0,,,,,
+2026-03-30,Taro,1019,0,free,0,,,,,
+2026-03-30,Trifold,2145,0,free,0,,,,,
+2026-03-31,Bravo,1683,62,free,0,,,,,
+2026-03-31,Cello,1222,-20,paid,89,1,0,0,0,35
+2026-03-31,Deliver,1787,-238,free,0,,,,,
+2026-03-31,Dispatch,,,paid,,,,,,8
+2026-03-31,Fargo,763,228,free,0,,,,,
+2026-03-31,Gibson,2335,-98,free,0,,,,,
+2026-03-31,Hanzo,309,30,free,0,,,,,
+2026-03-31,Haze,2347,-162,free,0,,,,,
+2026-03-31,Makro,958,96,paid,129,2,1,179,50,60
+2026-03-31,Nitro,63,4,free,0,,,,,
+2026-03-31,Pager,1209,428,free,0,,,,,
+2026-03-31,Powder,,,paid,,,,,,2
+2026-03-31,Quattro,1769,-74,free,0,,,,,
+2026-03-31,Quorum,1072,8,paid,129,1,0,0,0,38
+2026-03-31,Strida,2003,-4,free,0,,,,,
+2026-03-31,Taro,1263,-244,free,0,,,,,
+2026-03-31,Trifold,2171,-26,free,0,,,,,
+2026-04-01,Bravo,1979,-296,free,0,,,,,
+2026-04-01,Cello,1240,-18,paid,89,0,0,0,0,12
+2026-04-01,Deliver,1929,-142,free,0,,,,,
+2026-04-01,Dispatch,,,paid,,,,,,8
+2026-04-01,Fargo,1073,-310,free,0,,,,,
+2026-04-01,Gibson,2413,-78,free,0,,,,,
+2026-04-01,Hanzo,363,-54,free,0,,,,,
+2026-04-01,Haze,2297,50,free,0,,,,,
+2026-04-01,Makro,994,-36,paid,129,3,1,129,33.33,34
+2026-04-01,Nitro,63,0,free,0,,,,,
+2026-04-01,Pager,899,310,free,0,,,,,
+2026-04-01,Powder,,,paid,,,,,,3
+2026-04-01,Quattro,1583,186,free,0,,,,,
+2026-04-01,Quorum,1034,38,paid,129,0,0,0,0,29
+2026-04-01,Strida,2119,-116,free,0,,,,,
+2026-04-01,Taro,1337,-74,free,0,,,,,
+2026-04-01,Trifold,2275,-104,free,0,,,,,`;
 
 // ── STATE ─────────────────────────────────────────────────────────────────
 let currentSort = 'rank', sortDir = 1;
@@ -236,6 +253,7 @@ function buildTemplates(rows, forDate) {
       orders:     snap.orders     !== '' ? parseInt(snap.orders)       : null,
       revenue:    snap.revenue    !== '' ? parseFloat(snap.revenue)    : null,
       conversion: snap.conversion !== '' ? parseFloat(snap.conversion) : null,
+      visitors:   snap.visitors   !== undefined && snap.visitors !== '' ? parseInt(snap.visitors) : null,
     };
   });
 }
@@ -315,6 +333,7 @@ function getPaidSorted() {
     else if (s==='orders')  { av=a.orders??-1;         bv=b.orders??-1; }
     else if (s==='revenue') { av=a.revenue??-1;        bv=b.revenue??-1; }
     else if (s==='conversion'){av=a.conversion??-1;    bv=b.conversion??-1; }
+    else if (s==='visitors') { av=a.visitors??-1;      bv=b.visitors??-1;   }
     else                    { av=a.rank;               bv=b.rank; }
     return av < bv ? -sortDir : av > bv ? sortDir : 0;
   });
@@ -350,6 +369,7 @@ function renderRows() {
           <div class="card-field"><span class="cf-lbl">Revenue</span><span class="cf-val ${revVal==='—'?'muted':''}">${revVal}</span></div>
           <div class="card-field"><span class="cf-lbl">Checkouts</span><span class="cf-val ${chkVal==='—'?'muted':''}">${chkVal}</span></div>
           <div class="card-field"><span class="cf-lbl">Conv.</span><span class="cf-val ${convVal==='—'?'muted':''}">${convVal}</span></div>
+          <div class="card-field"><span class="cf-lbl">Visitors</span><span class="cf-val ${t.visitors===null?'muted':''}">${t.visitors !== null ? t.visitors : '—'}</span></div>
         </div>
       </div>`;
     }).join('');
@@ -365,7 +385,7 @@ function renderRows() {
         : `<div class="c-r muted">—</div>`;
       const td = encodeURIComponent(JSON.stringify({
         rank:t.rank, change:t.change_1d, price:t.price,
-        checkouts:t.checkouts, orders:t.orders, revenue:t.revenue, conversion:t.conversion
+        checkouts:t.checkouts, orders:t.orders, revenue:t.revenue, conversion:t.conversion, visitors:t.visitors
       }));
       return `<div class="row"
         onmouseenter="showTip(event,'${t.name}','${td}')"
@@ -376,8 +396,419 @@ function renderRows() {
         ${priceStr}
         ${m(t.checkouts)}
         ${m(t.orders)}
-        ${m(t.revenue,'$')}
+        ${m(t.revenue,'
+    }).join('');
+  }
+}
+
+// ── TOOLTIP ───────────────────────────────────────────────────────────────
+const tip = document.getElementById('tip');
+function showTip(e, name, enc) {
+  const d = JSON.parse(decodeURIComponent(enc));
+  let h = `<strong>${name}</strong><br>Rank #${d.rank.toLocaleString()}`;
+  if (d.change !== 0) {
+    const col = d.change > 0 ? '#4ade80' : '#f87171';
+    h += ` <span style="color:${col}">${d.change>0?'↑':'↓'}${Math.abs(d.change)}</span>`;
+  }
+  h += `<br>Price $${d.price}`;
+  if (d.checkouts !== null) h += `<br>Checkouts: ${d.checkouts}`;
+  if (d.orders    !== null) h += `<br>Orders: ${d.orders}`;
+  if (d.revenue   !== null) h += `<br>Revenue: $${d.revenue}`;
+  if (d.conversion && d.conversion > 0) h += `<br>Conv: ${d.conversion.toFixed(1)}%`;
+  if (d.visitors   !== null && d.visitors !== undefined) h += `<br>Visitors: ${d.visitors}`;
+  tip.innerHTML = h; tip.style.opacity = '1'; moveTip(e);
+}
+function moveTip(e) { tip.style.left=(e.clientX+16)+'px'; tip.style.top=(e.clientY-10)+'px'; }
+function hideTip()  { tip.style.opacity='0'; }
+
+// ── CONTROLS ──────────────────────────────────────────────────────────────
+function setSort(s) {
+  if (currentSort === s) { sortDir *= -1; }
+  else { currentSort = s; sortDir = (s==='rank'||s==='name') ? 1 : -1; }
+  document.querySelectorAll('.sort-btn, .table-header span').forEach(b => b.classList.remove('active','sorted'));
+  const sb = document.getElementById('sb-'+s); if (sb) sb.classList.add('active');
+  const th = document.getElementById('th-'+s); if (th) th.classList.add('sorted');
+  renderRows();
+}
+
+// ── CHART ─────────────────────────────────────────────────────────────────
+let chartSelectedTemplates = new Set();
+let chartFromDate = '', chartToDate = '';
+let chartHitTargets = [];
+
+const CHART_COLORS = [
+  { line: '#111111', barFill: 'rgba(17,17,17,0.18)',    barStroke: 'rgba(17,17,17,0.50)'   },
+  { line: '#6366f1', barFill: 'rgba(99,102,241,0.18)',  barStroke: 'rgba(99,102,241,0.55)' },
+  { line: '#f59e0b', barFill: 'rgba(245,158,11,0.18)',  barStroke: 'rgba(245,158,11,0.55)' },
+  { line: '#10b981', barFill: 'rgba(16,185,129,0.18)',  barStroke: 'rgba(16,185,129,0.55)' },
+  { line: '#ef4444', barFill: 'rgba(239,68,68,0.18)',   barStroke: 'rgba(239,68,68,0.55)'  },
+  { line: '#8b5cf6', barFill: 'rgba(139,92,246,0.18)',  barStroke: 'rgba(139,92,246,0.55)' },
+  { line: '#06b6d4', barFill: 'rgba(6,182,212,0.18)',   barStroke: 'rgba(6,182,212,0.55)'  },
+  { line: '#f97316', barFill: 'rgba(249,115,22,0.18)',  barStroke: 'rgba(249,115,22,0.55)' },
+  { line: '#ec4899', barFill: 'rgba(236,72,153,0.18)',  barStroke: 'rgba(236,72,153,0.55)' },
+  { line: '#84cc16', barFill: 'rgba(132,204,22,0.18)',  barStroke: 'rgba(132,204,22,0.55)' },
+  { line: '#14b8a6', barFill: 'rgba(20,184,166,0.18)',  barStroke: 'rgba(20,184,166,0.55)' },
+  { line: '#a855f7', barFill: 'rgba(168,85,247,0.18)',  barStroke: 'rgba(168,85,247,0.55)' },
+];
+
+function getPaidNames() {
+  return [...new Set(allData.filter(r => r.price_type === 'paid').map(r => r.template))].sort();
+}
+function colorOf(name) {
+  const i = getPaidNames().indexOf(name);
+  return CHART_COLORS[Math.max(0, i) % CHART_COLORS.length];
+}
+
+function updatePillColors() {
+  getPaidNames().forEach(name => {
+    const btn = document.getElementById('cp-' + name);
+    if (!btn) return;
+    const c = colorOf(name);
+    if (chartSelectedTemplates.has(name)) {
+      btn.style.background  = c.line;
+      btn.style.borderColor = c.line;
+      btn.style.color       = '#fff';
+    } else {
+      btn.style.background  = '#fff';
+      btn.style.borderColor = '#e8e8e8';
+      btn.style.color       = '#bbb';
+    }
+  });
+}
+
+function toggleChartTemplate(name) {
+  if (chartSelectedTemplates.has(name)) {
+    if (chartSelectedTemplates.size > 1) chartSelectedTemplates.delete(name);
+  } else {
+    chartSelectedTemplates.add(name);
+  }
+  updatePillColors();
+  renderChart();
+}
+
+function setChartRange(type, val) {
+  if (type === 'from') chartFromDate = val || dates[0];
+  if (type === 'to')   chartToDate   = val || dates[dates.length - 1];
+  if (chartFromDate > chartToDate) {
+    if (type === 'from') { chartFromDate = chartToDate; document.getElementById('chart-from').value = chartFromDate; }
+    else                 { chartToDate = chartFromDate; document.getElementById('chart-to').value   = chartToDate;   }
+  }
+  renderChart();
+}
+
+function initChart() {
+  const paid = getPaidNames();
+  if (!paid.length) return;
+  chartSelectedTemplates = new Set(paid);
+  chartFromDate = dates[0];
+  chartToDate   = dates[dates.length - 1];
+
+  const fromEl = document.getElementById('chart-from');
+  const toEl   = document.getElementById('chart-to');
+  fromEl.min = toEl.min = dates[0];
+  fromEl.max = toEl.max = dates[dates.length - 1];
+  fromEl.value = chartFromDate;
+  toEl.value   = chartToDate;
+
+  document.getElementById('chart-pills').innerHTML = paid.map(name =>
+    `<button class="chart-pill" id="cp-${name}" onclick="toggleChartTemplate('${name}')">${name}</button>`
+  ).join('');
+  updatePillColors();
+  renderChart();
+}
+
+function renderChart() {
+  const canvas = document.getElementById('chart-canvas');
+  if (!canvas || !allData.length) return;
+  const ctx  = canvas.getContext('2d');
+  const dpr  = window.devicePixelRatio || 1;
+  const wrap = canvas.parentElement;
+  const wrapW = wrap.getBoundingClientRect().width || wrap.offsetWidth;
+  const mobile = wrapW < 540;
+
+  const W = Math.floor(wrapW);
+  const H = mobile ? 210 : 300;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const rangeDates = dates.filter(d => d >= chartFromDate && d <= chartToDate);
+  if (!rangeDates.length) return;
+
+  const visibleNames = getPaidNames().filter(n => chartSelectedTemplates.has(n));
+  if (!visibleNames.length) return;
+
+  // Data map
+  const dataMap = {};
+  visibleNames.forEach(name => {
+    dataMap[name] = {};
+    rangeDates.forEach(d => {
+      const row = allData.find(r => r.date === d && r.template === name);
+      if (row) dataMap[name][d] = {
+        rank:     parseInt(row.rank)      || 0,
+        orders:   parseInt(row.orders)    || 0,
+        revenue:  parseFloat(row.revenue) || 0,
+        visitors: row.visitors !== undefined && row.visitors !== '' ? (parseInt(row.visitors) || 0) : null,
+      };
+    });
+  });
+
+  // Axis ranges
+  let rankMin = Infinity, rankMax = -Infinity, ordersMax = 0, visitorsMax = 0;
+  visibleNames.forEach(name => rangeDates.forEach(d => {
+    const pt = dataMap[name][d];
+    if (!pt) return;
+    rankMin = Math.min(rankMin, pt.rank);
+    rankMax = Math.max(rankMax, pt.rank);
+    ordersMax = Math.max(ordersMax, pt.orders);
+    if (pt.visitors !== null) visitorsMax = Math.max(visitorsMax, pt.visitors);
+  }));
+  if (!isFinite(rankMin)) return;
+  const rng = rankMax - rankMin || 50;
+  rankMin = Math.max(1, rankMin - rng * 0.2);
+  rankMax = rankMax + rng * 0.2;
+  ordersMax   = Math.max(2, ordersMax + 1);
+  visitorsMax = Math.max(5, visitorsMax + Math.ceil(visitorsMax * 0.15));
+
+  // Layout — smaller padding on mobile
+  const PAD = {
+    top:    20,
+    right:  mobile ? 36 : 54,
+    bottom: mobile ? 42 : 52,
+    left:   mobile ? 52 : 70,
+  };
+  const cW = W - PAD.left - PAD.right;
+  const cH = H - PAD.top  - PAD.bottom;
+  const fSz = mobile ? 9 : 10;
+
+  const xOf     = i => PAD.left + (rangeDates.length === 1 ? cW / 2 : (i / (rangeDates.length - 1)) * cW);
+  const yOfRank = r => PAD.top  + ((r - rankMin) / (rankMax - rankMin)) * cH;
+  const yOfOrd  = o => PAD.top  + cH - (o / ordersMax) * cH;
+  const yOfVis  = v => PAD.top  + cH - (v / visitorsMax) * cH;
+
+  // Grid
+  ctx.strokeStyle = '#f0f0f0'; ctx.lineWidth = 1;
+  const numGrid = 4;
+  for (let i = 0; i <= numGrid; i++) {
+    const y = PAD.top + (i / numGrid) * cH;
+    ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(PAD.left + cW, y); ctx.stroke();
+  }
+
+  // Left axis: Rank
+  ctx.font = `${fSz}px -apple-system, BlinkMacSystemFont, sans-serif`;
+  ctx.fillStyle = '#bbb'; ctx.textAlign = 'right';
+  for (let i = 0; i <= numGrid; i++) {
+    const y   = PAD.top + (i / numGrid) * cH;
+    const val = Math.round(rankMin + (i / numGrid) * (rankMax - rankMin));
+    ctx.fillText('#' + val.toLocaleString(), PAD.left - 6, y + 3.5);
+  }
+
+  // Right axis: Visitors (dashed, semi-transparent)
+  ctx.textAlign = 'left';
+  ctx.globalAlpha = 0.5;
+  const visStep = visitorsMax <= 10 ? 2 : visitorsMax <= 50 ? 10 : visitorsMax <= 200 ? 50 : 100;
+  for (let v = 0; v <= visitorsMax; v += visStep) {
+    const y = yOfVis(v);
+    if (y < PAD.top - 5 || y > PAD.top + cH + 5) continue;
+    ctx.fillText(v, PAD.left + cW + 6, y + 3.5);
+  }
+  ctx.globalAlpha = 1;
+
+  // X axis labels
+  ctx.textAlign = 'center';
+  rangeDates.forEach((d, i) => {
+    const lbl = new Date(d + 'T12:00:00').toLocaleDateString('en', { month: 'short', day: 'numeric' });
+    ctx.fillText(lbl, xOf(i), H - PAD.bottom + (mobile ? 14 : 18));
+  });
+
+  // Axis rotated labels
+  if (!mobile) {
+    ctx.fillStyle = '#ddd'; ctx.font = '9px -apple-system, sans-serif'; ctx.textAlign = 'center';
+    ctx.save(); ctx.translate(11, PAD.top + cH / 2); ctx.rotate(-Math.PI / 2); ctx.fillText('RANK', 0, 0); ctx.restore();
+    ctx.globalAlpha = 0.5;
+    ctx.save(); ctx.translate(W - 9, PAD.top + cH / 2); ctx.rotate(Math.PI / 2); ctx.fillText('VISITORS', 0, 0); ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
+  // Bars
+  const barGroupW = Math.min(cW / (rangeDates.length || 1) * (mobile ? 0.5 : 0.6), mobile ? 54 : 78);
+  const barW = barGroupW / visibleNames.length;
+  rangeDates.forEach((d, di) => {
+    const cx = xOf(di);
+    visibleNames.forEach((name, ni) => {
+      const pt = dataMap[name][d];
+      if (!pt || pt.orders === 0) return;
+      const c   = colorOf(name);
+      const bx  = cx - barGroupW / 2 + ni * barW;
+      const by  = yOfOrd(pt.orders);
+      const bh  = PAD.top + cH - by;
+      const bwi = barW - 2;
+
+      ctx.fillStyle   = c.barFill;
+      ctx.strokeStyle = c.barStroke;
+      ctx.lineWidth   = 1;
+      ctx.fillRect(bx, by, bwi, bh);
+      ctx.strokeRect(bx, by, bwi, bh);
+
+      // Label inside bar
+      ctx.save();
+      ctx.translate(bx + bwi / 2, by + bh / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.font = `600 ${fSz}px -apple-system, BlinkMacSystemFont, sans-serif`;
+      ctx.fillStyle    = c.line;
+      ctx.globalAlpha  = 0.65;
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'middle';
+      const maxLen = bh - 6;
+      const textW  = ctx.measureText(name).width;
+      if (textW <= maxLen) ctx.fillText(name, 0, 0);
+      else ctx.fillText(name.slice(0, Math.floor(name.length * maxLen / textW)), 0, 0);
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    });
+  });
+
+  // Rank lines + dots
+  chartHitTargets = [];
+  visibleNames.forEach(name => {
+    const c   = colorOf(name);
+    const pts = rangeDates.map((d, i) => {
+      const pt = dataMap[name][d];
+      return pt ? { x: xOf(i), y: yOfRank(pt.rank), rank: pt.rank, orders: pt.orders, revenue: pt.revenue, date: d } : null;
+    });
+    ctx.strokeStyle = c.line; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    let started = false;
+    pts.forEach(p => { if (!p) return; if (!started) { ctx.moveTo(p.x, p.y); started = true; } else ctx.lineTo(p.x, p.y); });
+    ctx.stroke();
+    pts.forEach(p => {
+      if (!p) return;
+      ctx.beginPath(); ctx.arc(p.x, p.y, mobile ? 3.5 : 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff'; ctx.fill();
+      ctx.strokeStyle = c.line; ctx.lineWidth = 2; ctx.stroke();
+      chartHitTargets.push({ x: p.x, y: p.y, name, rank: p.rank, orders: p.orders, revenue: p.revenue, date: p.date });
+    });
+  });
+
+  // Visitors dashed lines (same color, 50% opacity)
+  if (visitorsMax > 0) {
+    ctx.globalAlpha = 0.5;
+    ctx.setLineDash([4, 4]);
+    visibleNames.forEach(name => {
+      const c = colorOf(name);
+      const pts = rangeDates.map((d, i) => {
+        const pt = dataMap[name][d];
+        return (pt && pt.visitors !== null) ? { x: xOf(i), y: yOfVis(pt.visitors), v: pt.visitors, date: d } : null;
+      });
+      const valid = pts.filter(Boolean);
+      if (!valid.length) return;
+      ctx.strokeStyle = c.line; ctx.lineWidth = 1.5; ctx.lineJoin = 'round';
+      ctx.beginPath();
+      let started = false;
+      pts.forEach(p => { if (!p) return; if (!started) { ctx.moveTo(p.x, p.y); started = true; } else ctx.lineTo(p.x, p.y); });
+      ctx.stroke();
+      valid.forEach(p => {
+        ctx.beginPath(); ctx.arc(p.x, p.y, mobile ? 2.5 : 3, 0, Math.PI * 2);
+        ctx.fillStyle = c.line; ctx.fill();
+        chartHitTargets.push({ x: p.x, y: p.y, name, visitors: p.v, date: p.date, _visitorHit: true });
+      });
+    });
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+  }
+
+  // Legend
+  const legendY = H - PAD.bottom + (mobile ? 28 : 36);
+  let lx = PAD.left;
+  ctx.font = `${fSz + 1}px -apple-system, BlinkMacSystemFont, sans-serif`;
+  ctx.textAlign = 'left';
+  visibleNames.forEach(name => {
+    const c = colorOf(name);
+    ctx.strokeStyle = c.line; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(lx, legendY - 3.5); ctx.lineTo(lx + 12, legendY - 3.5); ctx.stroke();
+    ctx.beginPath(); ctx.arc(lx + 6, legendY - 3.5, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = c.line; ctx.stroke();
+    ctx.fillStyle = '#888'; ctx.fillText(name, lx + 18, legendY);
+    lx += ctx.measureText(name).width + (mobile ? 28 : 40);
+  });
+}
+
+// ── Chart hover / touch tooltip ───────────────────────────────────────────
+(function setupChartInteraction() {
+  const canvas   = document.getElementById('chart-canvas');
+  const chartTip = document.getElementById('chart-tip');
+
+  function showNearest(cx, cy, pageX, pageY) {
+    let nearest = null, minDist = 28;
+    chartHitTargets.forEach(h => {
+      const d = Math.hypot(h.x - cx, h.y - cy);
+      if (d < minDist) { minDist = d; nearest = h; }
+    });
+    if (nearest) {
+      const lbl = new Date(nearest.date + 'T12:00:00').toLocaleDateString('en', { month: 'short', day: 'numeric' });
+      if (nearest._visitorHit) {
+        chartTip.innerHTML = `<strong>${nearest.name}</strong> · ${lbl}<br>Visitors: ${nearest.visitors}`;
+      } else {
+        chartTip.innerHTML =
+          `<strong>${nearest.name}</strong> · ${lbl}<br>Rank #${nearest.rank.toLocaleString()}<br>Orders: ${nearest.orders}` +
+          (nearest.revenue > 0 ? `<br>Revenue: ${nearest.revenue.toLocaleString()}` : '') +
+          (nearest.visitors != null ? `<br>Visitors: ${nearest.visitors}` : '');
+      }
+      chartTip.style.opacity = '1';
+      chartTip.style.left = Math.min(pageX + 16, window.innerWidth - 220) + 'px';
+      chartTip.style.top  = (pageY - 10) + 'px';
+    } else {
+      chartTip.style.opacity = '0';
+    }
+  }
+
+  canvas.addEventListener('mousemove', e => {
+    const r = canvas.getBoundingClientRect();
+    showNearest(e.clientX - r.left, e.clientY - r.top, e.clientX, e.clientY);
+  });
+  canvas.addEventListener('mouseleave', () => { chartTip.style.opacity = '0'; });
+
+  // Touch support
+  canvas.addEventListener('touchstart', e => { e.preventDefault(); }, { passive: false });
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const t = e.touches[0];
+    const r = canvas.getBoundingClientRect();
+    showNearest(t.clientX - r.left, t.clientY - r.top, t.clientX, t.clientY);
+  }, { passive: false });
+  canvas.addEventListener('touchend', () => { setTimeout(() => { chartTip.style.opacity = '0'; }, 1500); });
+})();
+
+window.addEventListener('resize', () => { renderRows(); renderChart(); });
+
+// ── CSV DROP ──────────────────────────────────────────────────────────────
+const dropZone = document.getElementById('csv-drop');
+const fileInput = document.getElementById('csv-file-input');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('dragover');
+  const f = e.dataTransfer.files[0]; if (f) readFile(f);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) readFile(e.target.files[0]); });
+function readFile(f) {
+  const r = new FileReader();
+  r.onload = ev => { loadData(ev.target.result); dropZone.textContent = '✓ ' + f.name; };
+  r.readAsText(f);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+function renderAll() { renderStats(); renderRows(); }
+loadData(EMBEDDED_CSV);
+</script>
+</body>
+</html>
+)}
         ${convStr}
+        ${m(t.visitors)}
       </div>`;
     }).join('');
   }
