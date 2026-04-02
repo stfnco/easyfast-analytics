@@ -63,7 +63,7 @@
   .table-header span.sorted { color: #111; font-weight: 600; }
   .th-r { text-align: right; }
 
-  .row { display: grid; grid-template-columns: 64px 1fr 56px 64px 80px 56px 84px 68px 60px; padding: 10px 8px; border-radius: 8px; transition: background 0.1s; align-items: center; }
+  .row { display: grid; grid-template-columns: 64px 1fr 56px 64px 80px 56px 84px 68px 60px; padding: 10px 8px; border-radius: 8px; transition: background 0.1s, opacity 0.15s; align-items: center; }
   .row:hover { background: #fafafa; }
 
   .rank-num { font-size: 14px; font-weight: 600; color: #111; }
@@ -307,7 +307,7 @@ function renderRows() {
       const chkVal  = t.checkouts !== null ? t.checkouts : '—';
       const convVal = (t.conversion !== null && t.conversion > 0) ? `${t.conversion.toFixed(1)}%` : '—';
       const priceLbl = `$${t.price}`;
-      return `<div class="row">
+      return `<div class="row" data-template="${t.name}">
         <div class="row-top">
           <div class="name-cell"><span class="name-text">${t.name}</span></div>
           <div class="change-cell ${cls}">${chStr}</div>
@@ -337,7 +337,7 @@ function renderRows() {
         rank:t.rank, change:t.change_1d, price:t.price,
         checkouts:t.checkouts, orders:t.orders, revenue:t.revenue, conversion:t.conversion, visitors:t.visitors
       }));
-      return `<div class="row"
+      return `<div class="row" data-template="${t.name}"
         onmouseenter="showTip(event,'${t.name}','${td}')"
         onmousemove="moveTip(event)" onmouseleave="hideTip()">
         <div class="rank-num">#${t.rank.toLocaleString()}</div>
@@ -370,9 +370,21 @@ function showTip(e, name, enc) {
   if (d.conversion && d.conversion > 0) h += `<br>Conv: ${d.conversion.toFixed(1)}%`;
   if (d.visitors   !== null && d.visitors !== undefined) h += `<br>Visitors: ${d.visitors}`;
   tip.innerHTML = h; tip.style.opacity = '1'; moveTip(e);
+  if (hoveredTemplate !== name) { hoveredTemplate = name; renderChart(); highlightTableRow(name); }
 }
 function moveTip(e) { tip.style.left=(e.clientX+16)+'px'; tip.style.top=(e.clientY-10)+'px'; }
-function hideTip()  { tip.style.opacity='0'; }
+function hideTip()  {
+  tip.style.opacity='0';
+  if (hoveredTemplate) { hoveredTemplate = null; renderChart(); highlightTableRow(null); }
+}
+
+function highlightTableRow(name) {
+  document.querySelectorAll('#rows-container .row').forEach(row => {
+    if (!name) { row.style.opacity = ''; return; }
+    const rowName = row.getAttribute('data-template');
+    row.style.opacity = rowName === name ? '1' : '0.2';
+  });
+}
 
 // ── CONTROLS ──────────────────────────────────────────────────────────────
 function setSort(s) {
@@ -716,6 +728,7 @@ function renderChart() {
     if (newHover !== hoveredTemplate) {
       hoveredTemplate = newHover;
       renderChart();
+      highlightTableRow(newHover);
     }
     if (nearest) {
       const lbl = new Date(nearest.date + 'T12:00:00').toLocaleDateString('en', { month: 'short', day: 'numeric' });
@@ -749,7 +762,7 @@ function renderChart() {
   });
   canvas.addEventListener('mouseleave', () => {
     chartTip.style.opacity = '0';
-    if (hoveredTemplate) { hoveredTemplate = null; renderChart(); }
+    if (hoveredTemplate) { hoveredTemplate = null; renderChart(); highlightTableRow(null); }
   });
 
   // Touch support
@@ -763,7 +776,7 @@ function renderChart() {
   canvas.addEventListener('touchend', () => {
     setTimeout(() => {
       chartTip.style.opacity = '0';
-      if (hoveredTemplate) { hoveredTemplate = null; renderChart(); }
+      if (hoveredTemplate) { hoveredTemplate = null; renderChart(); highlightTableRow(null); }
     }, 1500);
   });
 })();
