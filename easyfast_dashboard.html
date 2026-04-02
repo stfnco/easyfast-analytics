@@ -389,6 +389,7 @@ let chartSelectedTemplates = new Set();
 let chartFromDate = '', chartToDate = '';
 let chartHitTargets = [];
 let chartLogicalW = 0, chartLogicalH = 0;
+let hoveredTemplate = null;
 
 const CHART_COLORS = [
   { line: '#111111', barFill: 'rgba(17,17,17,0.18)',    barStroke: 'rgba(17,17,17,0.50)'   },
@@ -589,6 +590,7 @@ function renderChart() {
   }
 
   // Bars
+  const ht = hoveredTemplate;
   const barGroupW = Math.min(cW / (rangeDates.length || 1) * (mobile ? 0.5 : 0.6), mobile ? 54 : 78);
   const barW = barGroupW / visibleNames.length;
   rangeDates.forEach((d, di) => {
@@ -597,6 +599,8 @@ function renderChart() {
       const pt = dataMap[name][d];
       if (!pt || pt.orders === 0) return;
       const c   = colorOf(name);
+      const dimmed = ht && ht !== name;
+      ctx.globalAlpha = dimmed ? 0.1 : 1;
       const bx  = cx - barGroupW / 2 + ni * barW;
       const by  = yOfOrd(pt.orders);
       const bh  = PAD.top + cH - by;
@@ -614,7 +618,7 @@ function renderChart() {
       ctx.rotate(-Math.PI / 2);
       ctx.font = `600 ${fSz}px -apple-system, BlinkMacSystemFont, sans-serif`;
       ctx.fillStyle    = c.line;
-      ctx.globalAlpha  = 0.65;
+      ctx.globalAlpha  = dimmed ? 0.05 : 0.65;
       ctx.textAlign    = 'center';
       ctx.textBaseline = 'middle';
       const maxLen = bh - 6;
@@ -630,11 +634,13 @@ function renderChart() {
   chartHitTargets = [];
   visibleNames.forEach(name => {
     const c   = colorOf(name);
+    const dimmed = ht && ht !== name;
+    ctx.globalAlpha = dimmed ? 0.1 : 1;
     const pts = rangeDates.map((d, i) => {
       const pt = dataMap[name][d];
-      return pt ? { x: xOf(i), y: yOfRank(pt.rank), rank: pt.rank, orders: pt.orders, revenue: pt.revenue, date: d } : null;
+      return pt ? { x: xOf(i), y: yOfRank(pt.rank), rank: pt.rank, orders: pt.orders, revenue: pt.revenue, date: d, visitors: pt.visitors } : null;
     });
-    ctx.strokeStyle = c.line; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+    ctx.strokeStyle = c.line; ctx.lineWidth = dimmed ? 1.5 : 2; ctx.lineJoin = 'round';
     ctx.beginPath();
     let started = false;
     pts.forEach(p => { if (!p) return; if (!started) { ctx.moveTo(p.x, p.y); started = true; } else ctx.lineTo(p.x, p.y); });
@@ -644,21 +650,23 @@ function renderChart() {
       ctx.beginPath(); ctx.arc(p.x, p.y, mobile ? 3.5 : 4.5, 0, Math.PI * 2);
       ctx.fillStyle = '#fff'; ctx.fill();
       ctx.strokeStyle = c.line; ctx.lineWidth = 2; ctx.stroke();
-      chartHitTargets.push({ x: p.x, y: p.y, name, rank: p.rank, orders: p.orders, revenue: p.revenue, date: p.date });
+      chartHitTargets.push({ x: p.x, y: p.y, name, rank: p.rank, orders: p.orders, revenue: p.revenue, date: p.date, visitors: p.visitors });
     });
+    ctx.globalAlpha = 1;
   });
 
-  // Visitors lines (same color, 50% opacity, thin solid)
+  // Visitors lines (same color, thin solid)
   if (visitorsMax > 0) {
-    ctx.globalAlpha = 0.5;
     visibleNames.forEach(name => {
       const c = colorOf(name);
+      const dimmed = ht && ht !== name;
+      ctx.globalAlpha = dimmed ? 0.06 : 0.5;
       const pts = rangeDates.map((d, i) => {
         const pt = dataMap[name][d];
         return (pt && pt.visitors !== null) ? { x: xOf(i), y: yOfVis(pt.visitors), v: pt.visitors, date: d } : null;
       });
       const valid = pts.filter(Boolean);
-      if (!valid.length) return;
+      if (!valid.length) { ctx.globalAlpha = 1; return; }
       ctx.strokeStyle = c.line; ctx.lineWidth = 1; ctx.lineJoin = 'round';
       ctx.beginPath();
       let started = false;
@@ -670,8 +678,8 @@ function renderChart() {
         ctx.fillStyle = c.line; ctx.fill();
         chartHitTargets.push({ x: p.x, y: p.y, name, visitors: p.v, date: p.date, _visitorHit: true });
       });
+      ctx.globalAlpha = 1;
     });
-    ctx.globalAlpha = 1;
   }
 
   // Legend
@@ -681,12 +689,15 @@ function renderChart() {
   ctx.textAlign = 'left';
   visibleNames.forEach(name => {
     const c = colorOf(name);
+    const dimmed = ht && ht !== name;
+    ctx.globalAlpha = dimmed ? 0.15 : 1;
     ctx.strokeStyle = c.line; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(lx, legendY - 3.5); ctx.lineTo(lx + 12, legendY - 3.5); ctx.stroke();
     ctx.beginPath(); ctx.arc(lx + 6, legendY - 3.5, 2.5, 0, Math.PI * 2);
     ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = c.line; ctx.stroke();
     ctx.fillStyle = '#888'; ctx.fillText(name, lx + 18, legendY);
     lx += ctx.measureText(name).width + (mobile ? 28 : 40);
+    ctx.globalAlpha = 1;
   });
 }
 
@@ -701,15 +712,20 @@ function renderChart() {
       const d = Math.hypot(h.x - cx, h.y - cy);
       if (d < minDist) { minDist = d; nearest = h; }
     });
+    const newHover = nearest ? nearest.name : null;
+    if (newHover !== hoveredTemplate) {
+      hoveredTemplate = newHover;
+      renderChart();
+    }
     if (nearest) {
       const lbl = new Date(nearest.date + 'T12:00:00').toLocaleDateString('en', { month: 'short', day: 'numeric' });
       if (nearest._visitorHit) {
         chartTip.innerHTML = `<strong>${nearest.name}</strong> · ${lbl}<br>Visitors: ${nearest.visitors}`;
       } else {
-        chartTip.innerHTML =
-          `<strong>${nearest.name}</strong> · ${lbl}<br>Rank #${nearest.rank.toLocaleString()}<br>Orders: ${nearest.orders}` +
-          (nearest.revenue > 0 ? `<br>Revenue: $${nearest.revenue.toLocaleString()}` : '') +
-          (nearest.visitors != null ? `<br>Visitors: ${nearest.visitors}` : '');
+        let html = `<strong>${nearest.name}</strong> · ${lbl}<br>Rank #${nearest.rank.toLocaleString()}<br>Orders: ${nearest.orders}`;
+        if (nearest.revenue > 0) html += `<br>Revenue: $${nearest.revenue.toLocaleString()}`;
+        if (nearest.visitors != null) html += `<br>Visitors: ${nearest.visitors}`;
+        chartTip.innerHTML = html;
       }
       chartTip.style.opacity = '1';
       chartTip.style.left = Math.min(pageX + 16, window.innerWidth - 220) + 'px';
@@ -731,7 +747,10 @@ function renderChart() {
     const [cx, cy] = canvasCoords(e.clientX, e.clientY);
     showNearest(cx, cy, e.clientX, e.clientY);
   });
-  canvas.addEventListener('mouseleave', () => { chartTip.style.opacity = '0'; });
+  canvas.addEventListener('mouseleave', () => {
+    chartTip.style.opacity = '0';
+    if (hoveredTemplate) { hoveredTemplate = null; renderChart(); }
+  });
 
   // Touch support
   canvas.addEventListener('touchstart', e => { e.preventDefault(); }, { passive: false });
@@ -741,7 +760,12 @@ function renderChart() {
     const [cx, cy] = canvasCoords(t.clientX, t.clientY);
     showNearest(cx, cy, t.clientX, t.clientY);
   }, { passive: false });
-  canvas.addEventListener('touchend', () => { setTimeout(() => { chartTip.style.opacity = '0'; }, 1500); });
+  canvas.addEventListener('touchend', () => {
+    setTimeout(() => {
+      chartTip.style.opacity = '0';
+      if (hoveredTemplate) { hoveredTemplate = null; renderChart(); }
+    }, 1500);
+  });
 })();
 
 window.addEventListener('resize', () => { renderRows(); renderChart(); });
