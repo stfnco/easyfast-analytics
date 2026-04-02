@@ -34,7 +34,6 @@ POLAR_BASE  = "https://api.polar.sh/v1"
 # WORK_DIR: defaults to the folder where this script lives (works locally and in GitHub Actions)
 WORK_DIR    = Path(os.environ.get("WORK_DIR", Path(__file__).parent))
 CSV_PATH    = WORK_DIR / "easyfast_ranks_history.csv"
-HTML_PATH   = WORK_DIR / "easyfast_dashboard.html"
 FRAMER_URL       = "https://framer-ranks.com"
 FRAMER_RANKS_JSON = "https://framer-ranks.com/ranks-data.json"
 FRAMER_RANK_KEY   = "alltime-all"   # key inside each item's "ranks" dict; value = [rank, change]
@@ -44,7 +43,7 @@ AUTHOR_NAME = "Easyfast"
 
 CSV_HEADERS = [
     "date","template","rank","change_1d",
-    "price_type","price","checkouts","orders","revenue","conversion","visitors",
+    "price_type","price","checkouts","orders","revenue","conversion",
 ]
 
 # ── Polar.sh ──────────────────────────────────────────────────────────────────
@@ -384,23 +383,6 @@ def save_csv(rows, dry_run=False):
         print(f"   ✅ CSV → {CSV_PATH}")
     return text
 
-def update_dashboard(csv_text, dry_run=False):
-    if not HTML_PATH.exists():
-        return
-    html = HTML_PATH.read_text(encoding="utf-8")
-    new_html = re.sub(
-        r"(const EMBEDDED_CSV = `)([^`]*?)(`)",
-        lambda m: m.group(1) + csv_text.strip() + m.group(3),
-        html, flags=re.DOTALL,
-    )
-    if new_html == html:
-        print("   ⚠  EMBEDDED_CSV marker not found")
-        return
-    if not dry_run:
-        HTML_PATH.write_text(new_html, encoding="utf-8")
-        print(f"   ✅ Dashboard → {HTML_PATH}")
-    else:
-        print("   ✅ Dashboard would be updated (dry-run)")
 
 # ── Diagnose ───────────────────────────────────────────────────────────────────
 def diagnose():
@@ -585,7 +567,7 @@ def main():
 
     print("\n💾  Saving…")
     csv_text = save_csv(rows, dry_run=args.dry_run)
-    update_dashboard(csv_text, dry_run=args.dry_run)
+    # Dashboard now reads CSV via fetch — no need to update HTML
     print("\n✅  Done!\n")
 
 if __name__ == "__main__":

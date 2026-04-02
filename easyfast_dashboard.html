@@ -7,7 +7,7 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html { overflow-x: clip; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif; background: #fff; color: #111; min-height: 100vh; overflow-x: clip; max-width: 100vw; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif; background: #fff; color: #111; min-height: 100vh; overflow-x: clip; max-width: 1600px; margin: 0 auto; }
 
   /* ── Tokens ── */
   :root { --px: 48px; }
@@ -140,21 +140,21 @@
   <input type="date" class="date-input" id="date-picker" onchange="onDatePick(this.value)">
   <div class="sep"></div>
   <span class="sort-label">Sort</span>
-  <button class="sort-btn active" id="sb-rank"     onclick="setSort('rank')">Rank</button>
-  <button class="sort-btn"       id="sb-name"     onclick="setSort('name')">Name</button>
-  <button class="sort-btn"       id="sb-orders"   onclick="setSort('orders')">Orders</button>
-  <button class="sort-btn"       id="sb-revenue"  onclick="setSort('revenue')">Revenue</button>
+  <button class="sort-btn"        id="sb-rank"     onclick="setSort('rank')">Rank</button>
+  <button class="sort-btn"        id="sb-name"     onclick="setSort('name')">Name</button>
+  <button class="sort-btn"        id="sb-orders"   onclick="setSort('orders')">Orders</button>
+  <button class="sort-btn active" id="sb-revenue"  onclick="setSort('revenue')">Revenue</button>
 </div>
 
 <div class="table-wrap">
   <div class="table-header">
-    <span class="sorted" id="th-rank"       onclick="setSort('rank')">Rank</span>
+    <span               id="th-rank"       onclick="setSort('rank')">Rank</span>
     <span               id="th-name"       onclick="setSort('name')">Template</span>
     <span               id="th-change">1d</span>
     <span class="th-r"  id="th-price"      onclick="setSort('price')">Price</span>
     <span class="th-r"  id="th-checkouts"  onclick="setSort('checkouts')">Checkouts</span>
     <span class="th-r"  id="th-orders"     onclick="setSort('orders')">Orders</span>
-    <span class="th-r"  id="th-revenue"    onclick="setSort('revenue')">Revenue</span>
+    <span class="th-r sorted" id="th-revenue" onclick="setSort('revenue')">Revenue</span>
     <span class="th-r"  id="th-conversion" onclick="setSort('conversion')">Conv.</span>
     <span class="th-r"  id="th-visitors"   onclick="setSort('visitors')">Visitors</span>
   </div>
@@ -164,55 +164,8 @@
 <div class="tooltip" id="tip"></div>
 
 <script>
-// ── EMBEDDED DATA (auto-updated by scheduled task) ────────────────────────
-const EMBEDDED_CSV = `date,template,rank,change_1d,price_type,price,checkouts,orders,revenue,conversion,visitors
-2026-03-30,Bravo,1745,0,free,0,,,,,
-2026-03-30,Cello,1202,-2,paid,89,12,0,0,0,45
-2026-03-30,Deliver,1549,0,free,0,,,,,
-2026-03-30,Dispatch,,,paid,,,,,,11
-2026-03-30,Fargo,991,0,free,0,,,,,
-2026-03-30,Gibson,2237,0,free,0,,,,,
-2026-03-30,Hanzo,339,0,free,0,,,,,
-2026-03-30,Haze,2185,0,free,0,,,,,
-2026-03-30,Makro,1054,8,paid,129,11,2,258,18.18,60
-2026-03-30,Nitro,67,0,free,0,,,,,
-2026-03-30,Pager,1637,0,free,0,,,,,
-2026-03-30,Powder,,,paid,,,,,,4
-2026-03-30,Quattro,1695,0,free,0,,,,,
-2026-03-30,Quorum,1080,46,paid,129,10,0,0,0,34
-2026-03-30,Strida,1999,0,free,0,,,,,
-2026-03-30,Taro,1019,0,free,0,,,,,
-2026-03-30,Trifold,2145,0,free,0,,,,,
-2026-03-31,Bravo,1683,62,free,0,,,,,
-2026-03-31,Cello,1222,-20,paid,89,1,0,0,0,35
-2026-03-31,Deliver,1787,-238,free,0,,,,,
-2026-03-31,Dispatch,,,paid,,,,,,8
-2026-03-31,Fargo,763,228,free,0,,,,,
-2026-03-31,Gibson,2335,-98,free,0,,,,,
-2026-03-31,Hanzo,309,30,free,0,,,,,
-2026-03-31,Haze,2347,-162,free,0,,,,,
-2026-03-31,Makro,958,96,paid,129,2,1,179,50,60
-2026-03-31,Nitro,63,4,free,0,,,,,
-2026-03-31,Pager,1209,428,free,0,,,,,
-2026-03-31,Powder,,,paid,,,,,,2
-2026-03-31,Quattro,1769,-74,free,0,,,,,
-2026-03-31,Quorum,1072,8,paid,129,1,0,0,0,38
-2026-03-31,Strida,2003,-4,free,0,,,,,
-2026-03-31,Taro,1263,-244,free,0,,,,,
-2026-03-31,Trifold,2171,-26,free,0,,,,,
-2026-04-01,Cello,546,676,paid,89,0,0,0.0,0.0,
-2026-04-01,Dispatch,,,paid,149,1,0,0.0,0.0,
-2026-04-01,Makro,832,126,paid,129,4,1,129.0,25.0,
-2026-04-01,Powder,,,paid,129,0,0,0.0,0.0,
-2026-04-01,Quorum,344,728,paid,129,1,0,0.0,0.0,
-2026-04-02,Cello,540,6,paid,89,0,0,0.0,0.0,
-2026-04-02,Dispatch,,,paid,149,1,0,0.0,0.0,
-2026-04-02,Makro,786,46,paid,129,0,0,0.0,0.0,
-2026-04-02,Powder,,,paid,129,0,0,0.0,0.0,
-2026-04-02,Quorum,336,8,paid,129,0,0,0.0,0.0,`;
-
 // ── STATE ─────────────────────────────────────────────────────────────────
-let currentSort = 'rank', sortDir = 1;
+let currentSort = 'revenue', sortDir = -1;
 let selectedDate = null, allData = [], dates = [], templates = [];
 
 // ── PARSE ─────────────────────────────────────────────────────────────────
@@ -328,7 +281,11 @@ function getPaidSorted() {
     else if (s==='conversion'){av=a.conversion??-1;    bv=b.conversion??-1; }
     else if (s==='visitors') { av=a.visitors??-1;      bv=b.visitors??-1;   }
     else                    { av=a.rank;               bv=b.rank; }
-    return av < bv ? -sortDir : av > bv ? sortDir : 0;
+    if (av < bv) return -sortDir;
+    if (av > bv) return sortDir;
+    // Secondary sort: by rank ascending (lower rank = better)
+    const ar = a.rank || 99999, br = b.rank || 99999;
+    return ar - br;
   });
 }
 
@@ -431,6 +388,7 @@ function setSort(s) {
 let chartSelectedTemplates = new Set();
 let chartFromDate = '', chartToDate = '';
 let chartHitTargets = [];
+let chartLogicalW = 0, chartLogicalH = 0;
 
 const CHART_COLORS = [
   { line: '#111111', barFill: 'rgba(17,17,17,0.18)',    barStroke: 'rgba(17,17,17,0.50)'   },
@@ -530,6 +488,8 @@ function renderChart() {
   canvas.style.height = H + 'px';
   ctx.scale(dpr, dpr);
   ctx.clearRect(0, 0, W, H);
+  chartLogicalW = W;
+  chartLogicalH = H;
 
   const rangeDates = dates.filter(d => d >= chartFromDate && d <= chartToDate);
   if (!rangeDates.length) return;
@@ -552,17 +512,16 @@ function renderChart() {
     });
   });
 
-  // Axis ranges
+  // Axis ranges (rank=0 means "unranked" — exclude from scale, draw at bottom)
   let rankMin = Infinity, rankMax = -Infinity, ordersMax = 0, visitorsMax = 0;
   visibleNames.forEach(name => rangeDates.forEach(d => {
     const pt = dataMap[name][d];
     if (!pt) return;
-    rankMin = Math.min(rankMin, pt.rank);
-    rankMax = Math.max(rankMax, pt.rank);
+    if (pt.rank > 0) { rankMin = Math.min(rankMin, pt.rank); rankMax = Math.max(rankMax, pt.rank); }
     ordersMax = Math.max(ordersMax, pt.orders);
     if (pt.visitors !== null) visitorsMax = Math.max(visitorsMax, pt.visitors);
   }));
-  if (!isFinite(rankMin)) return;
+  if (!isFinite(rankMin)) { rankMin = 1; rankMax = 100; }
   const rng = rankMax - rankMin || 50;
   rankMin = Math.max(1, rankMin - rng * 0.2);
   rankMax = rankMax + rng * 0.2;
@@ -581,7 +540,7 @@ function renderChart() {
   const fSz = mobile ? 9 : 10;
 
   const xOf     = i => PAD.left + (rangeDates.length === 1 ? cW / 2 : (i / (rangeDates.length - 1)) * cW);
-  const yOfRank = r => PAD.top  + ((r - rankMin) / (rankMax - rankMin)) * cH;
+  const yOfRank = r => r === 0 ? PAD.top + cH : PAD.top + ((r - rankMin) / (rankMax - rankMin)) * cH;
   const yOfOrd  = o => PAD.top  + cH - (o / ordersMax) * cH;
   const yOfVis  = v => PAD.top  + cH - (v / visitorsMax) * cH;
 
@@ -689,10 +648,9 @@ function renderChart() {
     });
   });
 
-  // Visitors dashed lines (same color, 50% opacity)
+  // Visitors lines (same color, 50% opacity, thin solid)
   if (visitorsMax > 0) {
     ctx.globalAlpha = 0.5;
-    ctx.setLineDash([4, 4]);
     visibleNames.forEach(name => {
       const c = colorOf(name);
       const pts = rangeDates.map((d, i) => {
@@ -701,19 +659,18 @@ function renderChart() {
       });
       const valid = pts.filter(Boolean);
       if (!valid.length) return;
-      ctx.strokeStyle = c.line; ctx.lineWidth = 1.5; ctx.lineJoin = 'round';
+      ctx.strokeStyle = c.line; ctx.lineWidth = 1; ctx.lineJoin = 'round';
       ctx.beginPath();
       let started = false;
       pts.forEach(p => { if (!p) return; if (!started) { ctx.moveTo(p.x, p.y); started = true; } else ctx.lineTo(p.x, p.y); });
       ctx.stroke();
       // small dots
       valid.forEach(p => {
-        ctx.beginPath(); ctx.arc(p.x, p.y, mobile ? 2.5 : 3, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.arc(p.x, p.y, mobile ? 2 : 2.5, 0, Math.PI * 2);
         ctx.fillStyle = c.line; ctx.fill();
         chartHitTargets.push({ x: p.x, y: p.y, name, visitors: p.v, date: p.date, _visitorHit: true });
       });
     });
-    ctx.setLineDash([]);
     ctx.globalAlpha = 1;
   }
 
@@ -762,9 +719,17 @@ function renderChart() {
     }
   }
 
-  canvas.addEventListener('mousemove', e => {
+  function canvasCoords(clientX, clientY) {
     const r = canvas.getBoundingClientRect();
-    showNearest(e.clientX - r.left, e.clientY - r.top, e.clientX, e.clientY);
+    return [
+      (clientX - r.left) * chartLogicalW / r.width,
+      (clientY - r.top)  * chartLogicalH / r.height
+    ];
+  }
+
+  canvas.addEventListener('mousemove', e => {
+    const [cx, cy] = canvasCoords(e.clientX, e.clientY);
+    showNearest(cx, cy, e.clientX, e.clientY);
   });
   canvas.addEventListener('mouseleave', () => { chartTip.style.opacity = '0'; });
 
@@ -773,8 +738,8 @@ function renderChart() {
   canvas.addEventListener('touchmove', e => {
     e.preventDefault();
     const t = e.touches[0];
-    const r = canvas.getBoundingClientRect();
-    showNearest(t.clientX - r.left, t.clientY - r.top, t.clientX, t.clientY);
+    const [cx, cy] = canvasCoords(t.clientX, t.clientY);
+    showNearest(cx, cy, t.clientX, t.clientY);
   }, { passive: false });
   canvas.addEventListener('touchend', () => { setTimeout(() => { chartTip.style.opacity = '0'; }, 1500); });
 })();
@@ -799,7 +764,54 @@ function readFile(f) {
 
 // ── INIT ──────────────────────────────────────────────────────────────────
 function renderAll() { renderStats(); renderRows(); }
-loadData(EMBEDDED_CSV);
+
+// Fetch both CSVs and merge: ranks (auto-parsed) + visitors (manual).
+(function init() {
+  const sub = document.getElementById('date-sub');
+
+  function fetchCSV(url) {
+    return fetch(url, { cache: 'no-store' })
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then(text => text.trim());
+  }
+
+  function mergeVisitors(ranksCsv, visitorsCsv) {
+    // Parse visitors into a lookup: "date|template" → visitors
+    const vMap = {};
+    if (visitorsCsv) {
+      const vLines = visitorsCsv.split('\n').filter(l => l.trim());
+      const vHeaders = vLines[0].split(',').map(h => h.trim());
+      const di = vHeaders.indexOf('date'), ti = vHeaders.indexOf('template'), vi = vHeaders.indexOf('visitors');
+      if (di >= 0 && ti >= 0 && vi >= 0) {
+        vLines.slice(1).forEach(line => {
+          const vals = line.split(',');
+          vMap[vals[di].trim() + '|' + vals[ti].trim()] = vals[vi].trim();
+        });
+      }
+    }
+    // Append visitors column to ranks CSV
+    const lines = ranksCsv.split('\n').filter(l => l.trim());
+    const header = lines[0] + ',visitors';
+    const rows = lines.slice(1).map(line => {
+      const vals = line.split(',');
+      const key = vals[0].trim() + '|' + vals[1].trim();
+      return line + ',' + (vMap[key] || '');
+    });
+    return header + '\n' + rows.join('\n');
+  }
+
+  Promise.all([
+    fetchCSV('easyfast_ranks_history.csv'),
+    fetchCSV('easyfast_visitors.csv').catch(() => null)  // visitors is optional
+  ]).then(([ranksCsv, visitorsCsv]) => {
+    const merged = mergeVisitors(ranksCsv, visitorsCsv);
+    console.log('✅ Data loaded — ranks + ' + (visitorsCsv ? 'visitors merged' : 'no visitors file'));
+    loadData(merged);
+  }).catch(err => {
+    console.error('❌ Failed to load data:', err);
+    if (sub) sub.textContent = '⚠ Could not load CSV files — make sure they are in the same folder.';
+  });
+})();
 </script>
 </body>
 </html>
