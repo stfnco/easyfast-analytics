@@ -43,8 +43,8 @@ date,template,rank,change_1d,price_type,price,checkouts,orders,revenue,conversio
 2026-04-02,Makro,786,46,paid,129,0,0,0.0,0.0
 2026-04-02,Powder,,,paid,129,0,0,0.0,0.0
 2026-04-02,Quorum,336,8,paid,129,0,0,0.0,0.0
-2026-04-03,Cello,536,4,paid,89,0,0,0.0,0.0
-2026-04-03,Dispatch,,,paid,149,0,0,0.0,0.0
+2026-04-03,Cello,536,4,paid,89,1,0,0.0,0.0
+2026-04-03,Dispatch,,,paid,149,2,0,0.0,0.0
 2026-04-03,Makro,782,4,paid,129,0,0,0.0,0.0
 2026-04-03,Powder,,,paid,129,0,0,0.0,0.0
 2026-04-03,Quorum,334,2,paid,129,0,0,0.0,0.0
