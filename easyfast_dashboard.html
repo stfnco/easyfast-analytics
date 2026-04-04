@@ -136,6 +136,10 @@
 <div id="chart-tip"></div>
 
 <div class="controls">
+  <span class="sort-label">Rank</span>
+  <button class="sort-btn active" id="rm-weekly"  onclick="setRankMode('weekly')">Last Week</button>
+  <button class="sort-btn"        id="rm-alltime" onclick="setRankMode('alltime')">All Time</button>
+  <div class="sep"></div>
   <span class="date-label">Date</span>
   <input type="date" class="date-input" id="date-picker" onchange="onDatePick(this.value)">
   <div class="sep"></div>
@@ -167,6 +171,7 @@
 // ── STATE ─────────────────────────────────────────────────────────────────
 let currentSort = 'revenue', sortDir = -1;
 let selectedDate = null, allData = [], dates = [], templates = [];
+let rankMode = 'weekly'; // 'weekly' or 'alltime'
 
 // ── PARSE ─────────────────────────────────────────────────────────────────
 function parseCSV(csv) {
@@ -199,10 +204,16 @@ function buildTemplates(rows, forDate) {
       orders:     snap.orders     !== '' ? parseInt(snap.orders)       : null,
       revenue:    snap.revenue    !== '' ? parseFloat(snap.revenue)    : null,
       conversion: snap.conversion !== '' ? parseFloat(snap.conversion) : null,
-      visitors:   snap.visitors   !== undefined && snap.visitors !== '' ? parseInt(snap.visitors) : null,
+      visitors:      snap.visitors      !== undefined && snap.visitors      !== '' ? parseInt(snap.visitors)      : null,
+      rank_weekly:   parseInt(snap.rank_weekly) || 0,
+      change_1d_weekly: parseInt(snap.change_1d_weekly) || 0,
     };
   });
 }
+
+// Helper: get the active rank/change based on current rankMode
+function getRank(t) { return rankMode === 'weekly' ? t.rank_weekly : t.rank; }
+function getChange(t) { return rankMode === 'weekly' ? t.change_1d_weekly : t.change_1d; }
 
 function loadData(csvText) {
   allData = parseCSV(csvText);
@@ -272,7 +283,7 @@ function getPaidSorted() {
   const s = currentSort;
   return [...data].sort((a, b) => {
     let av, bv;
-    if      (s==='rank')    { av=a.rank;              bv=b.rank; }
+    if      (s==='rank')    { av=getRank(a);           bv=getRank(b); }
     else if (s==='name')    { av=a.name.toLowerCase(); bv=b.name.toLowerCase(); }
     else if (s==='price')   { av=a.price;              bv=b.price; }
     else if (s==='checkouts'){av=a.checkouts??-1;      bv=b.checkouts??-1; }
@@ -284,7 +295,7 @@ function getPaidSorted() {
     if (av < bv) return -sortDir;
     if (av > bv) return sortDir;
     // Secondary sort: by rank ascending (lower rank = better)
-    const ar = a.rank || 99999, br = b.rank || 99999;
+    const ar = getRank(a) || 99999, br = getRank(b) || 99999;
     return ar - br;
   });
 }
@@ -299,7 +310,8 @@ function renderRows() {
   if (isMobile()) {
     // Card layout
     document.getElementById('rows-container').innerHTML = data.map(t => {
-      const ch = t.change_1d;
+      const rk = getRank(t);
+      const ch = getChange(t);
       const cls = ch > 0 ? 'up' : ch < 0 ? 'down' : 'flat';
       const chStr = ch > 0 ? `↑${ch}` : ch < 0 ? `↓${Math.abs(ch)}` : '—';
       const ordVal  = t.orders  !== null ? t.orders  : '—';
@@ -313,7 +325,7 @@ function renderRows() {
           <div class="change-cell ${cls}">${chStr}</div>
         </div>
         <div class="row-bottom">
-          <div class="card-field"><span class="cf-lbl">Rank</span><span class="cf-val">#${t.rank.toLocaleString()}</span></div>
+          <div class="card-field"><span class="cf-lbl">Rank</span><span class="cf-val">${rk ? '#'+rk.toLocaleString() : '—'}</span></div>
           <div class="card-field"><span class="cf-lbl">Price</span><span class="cf-val">${priceLbl}</span></div>
           <div class="card-field"><span class="cf-lbl">Orders</span><span class="cf-val ${ordVal==='—'?'muted':''}">${ordVal}</span></div>
           <div class="card-field"><span class="cf-lbl">Revenue</span><span class="cf-val ${revVal==='—'?'muted':''}">${revVal}</span></div>
@@ -326,7 +338,8 @@ function renderRows() {
   } else {
     // Desktop grid layout
     document.getElementById('rows-container').innerHTML = data.map(t => {
-      const ch = t.change_1d;
+      const rk = getRank(t);
+      const ch = getChange(t);
       const cls = ch > 0 ? 'up' : ch < 0 ? 'down' : 'flat';
       const chStr = ch > 0 ? `↑${ch}` : ch < 0 ? `↓${Math.abs(ch)}` : '—';
       const priceStr = `<div class="c-r price-paid">$${t.price}</div>`;
@@ -334,13 +347,13 @@ function renderRows() {
         ? `<div class="c-r">${t.conversion.toFixed(1)}%</div>`
         : `<div class="c-r muted">—</div>`;
       const td = encodeURIComponent(JSON.stringify({
-        rank:t.rank, change:t.change_1d, price:t.price,
+        rank:rk, change:ch, price:t.price,
         checkouts:t.checkouts, orders:t.orders, revenue:t.revenue, conversion:t.conversion, visitors:t.visitors
       }));
       return `<div class="row" data-template="${t.name}"
         onmouseenter="showTip(event,'${t.name}','${td}')"
         onmousemove="moveTip(event)" onmouseleave="hideTip()">
-        <div class="rank-num">#${t.rank.toLocaleString()}</div>
+        <div class="rank-num">${rk ? '#'+rk.toLocaleString() : '—'}</div>
         <div class="name-cell"><span class="name-text">${t.name}</span></div>
         <div class="change-cell ${cls}">${chStr}</div>
         ${priceStr}
@@ -394,6 +407,16 @@ function setSort(s) {
   const sb = document.getElementById('sb-'+s); if (sb) sb.classList.add('active');
   const th = document.getElementById('th-'+s); if (th) th.classList.add('sorted');
   renderRows();
+}
+
+// ── RANK MODE TOGGLE ─────────────────────────────────────────────────────
+function setRankMode(mode) {
+  rankMode = mode;
+  document.getElementById('rm-weekly').classList.toggle('active', mode === 'weekly');
+  document.getElementById('rm-alltime').classList.toggle('active', mode === 'alltime');
+  renderStats();
+  renderRows();
+  renderChart();
 }
 
 // ── CHART ─────────────────────────────────────────────────────────────────
@@ -516,12 +539,15 @@ function renderChart() {
     dataMap[name] = {};
     rangeDates.forEach(d => {
       const row = allData.find(r => r.date === d && r.template === name);
-      if (row) dataMap[name][d] = {
-        rank:     parseInt(row.rank)      || 0,
-        orders:   parseInt(row.orders)    || 0,
-        revenue:  parseFloat(row.revenue) || 0,
-        visitors: row.visitors !== undefined && row.visitors !== '' ? (parseInt(row.visitors) || 0) : null,
-      };
+      if (row) {
+        const rkVal = rankMode === 'weekly' ? (parseInt(row.rank_weekly) || 0) : (parseInt(row.rank) || 0);
+        dataMap[name][d] = {
+          rank:     rkVal,
+          orders:   parseInt(row.orders)    || 0,
+          revenue:  parseFloat(row.revenue) || 0,
+          visitors: row.visitors !== undefined && row.visitors !== '' ? (parseInt(row.visitors) || 0) : null,
+        };
+      }
     });
   });
 

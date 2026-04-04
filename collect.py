@@ -2,12 +2,13 @@
 """
 Easyfast Analytics Collector
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 Usage:
-  python3 collect.py                     # collect today's data
-  python3 collect.py --also-yesterday    # today + re-fetch yesterday
-  python3 collect.py --date 2026-04-05   # specific date
-  python3 collect.py --dry-run           # preview without writing files
-  python3 collect.py --diagnose          # debug: inspect raw responses
+  python3 collect.py                    # collect today's data
+  python3 collect.py --also-yesterday   # today + re-fetch yesterday
+  python3 collect.py --date 2026-04-05  # specific date
+  python3 collect.py --dry-run          # preview without writing files
+  python3 collect.py --diagnose         # debug: inspect raw responses
 """
 
 import sys, re, csv, io, json, argparse, os
@@ -27,26 +28,33 @@ try:
 except ImportError:
     HAS_BS4 = False
 
-# ── Config ────────────────────────────────────────────────────────────────────
+# ── Config ──────────────────────────────────────────────────────────────────────
+
 # Token: set POLAR_TOKEN env var (GitHub Actions secret), or leave hardcoded for local use
 POLAR_TOKEN = os.environ.get("POLAR_TOKEN", "polar_oat_foTaGXfvpjzIKQxFTAogiMx0KKGfGaDYw5JZp3piWrd")
 POLAR_BASE  = "https://api.polar.sh/v1"
+
 # WORK_DIR: defaults to the folder where this script lives (works locally and in GitHub Actions)
-WORK_DIR    = Path(os.environ.get("WORK_DIR", Path(__file__).parent))
-CSV_PATH    = WORK_DIR / "easyfast_ranks_history.csv"
-FRAMER_URL       = "https://framer-ranks.com"
-FRAMER_RANKS_JSON = "https://framer-ranks.com/ranks-data.json"
-FRAMER_RANK_KEY   = "alltime-all"   # key inside each item's "ranks" dict; value = [rank, change]
+WORK_DIR  = Path(os.environ.get("WORK_DIR", Path(__file__).parent))
+CSV_PATH  = WORK_DIR / "easyfast_ranks_history.csv"
+
+FRAMER_URL         = "https://framer-ranks.com"
+FRAMER_RANKS_JSON  = "https://framer-ranks.com/ranks-data.json"
+FRAMER_RANK_KEY         = "alltime-all"     # All Time ranking
+FRAMER_RANK_KEY_WEEKLY  = "lastWeek-all"    # Last Week ranking
 
 # Author name on framer-ranks.com — used to auto-discover all your templates
 AUTHOR_NAME = "Easyfast"
 
 CSV_HEADERS = [
     "date","template","rank","change_1d",
+    "rank_weekly","change_1d_weekly",
     "price_type","price","checkouts","orders","revenue","conversion",
 ]
 
-# ── Polar.sh ──────────────────────────────────────────────────────────────────
+
+# ── Polar.sh ────────────────────────────────────────────────────────────────────
+
 _s = requests.Session()
 _s.headers.update({"Authorization": f"Bearer {POLAR_TOKEN}", "Accept": "application/json"})
 
@@ -81,14 +89,14 @@ def discover_paid_templates(products):
     Returns: {template_name: price_in_dollars}
     """
     from collections import defaultdict
-    tier_prices = defaultdict(dict)   # {tmpl: {"basic": $, "full_site": $, "unlimited": $}}
+    tier_prices = defaultdict(dict)  # {tmpl: {"basic": $, "full_site": $, "unlimited": $}}
 
     for p in products:
         if p.get("is_archived"):
             continue
-        name     = p.get("name", "")
-        tmpl     = template_name(name)
-        name_lc  = name.lower()
+        name = p.get("name", "")
+        tmpl = template_name(name)
+        name_lc = name.lower()
 
         # Collect the highest price_amount from this product's prices list
         price_cents = 0
@@ -116,24 +124,24 @@ def discover_paid_templates(products):
         result[tmpl] = int(price)
     return result
 
+
 def get_polar_metrics(target_date, products):
     """
     Returns {template_name: {orders, revenue, checkouts, conversion}}
     Polar.sh date filter doesn't work → fetch all, filter by date in Python.
     """
-    print(f"      Fetching all Polar.sh orders…")
-    all_orders    = fetch_all_pages("/orders")
-    print(f"      → {len(all_orders)} total orders")
+    print(f"    Fetching all Polar.sh orders…")
+    all_orders = fetch_all_pages("/orders")
+    print(f"    → {len(all_orders)} total orders")
 
-    print(f"      Fetching all Polar.sh checkouts…")
+    print(f"    Fetching all Polar.sh checkouts…")
     all_checkouts = fetch_all_pages("/checkouts")
-    print(f"      → {len(all_checkouts)} total checkouts")
+    print(f"    → {len(all_checkouts)} total checkouts")
 
     # Filter to target date
     day_orders    = [o for o in all_orders    if o.get("created_at","").startswith(target_date) and o.get("paid")]
     day_checkouts = [c for c in all_checkouts if c.get("created_at","").startswith(target_date)]
-
-    print(f"      → {len(day_orders)} orders on {target_date}, {len(day_checkouts)} checkouts")
+    print(f"    → {len(day_orders)} orders on {target_date}, {len(day_checkouts)} checkouts")
 
     # Build product_id → template name map (merge all tiers under one name)
     pid_to_tmpl = {}
@@ -142,8 +150,7 @@ def get_polar_metrics(target_date, products):
         if tmpl in PAID_TEMPLATES:
             pid_to_tmpl[p["id"]] = tmpl
 
-    metrics = {t: {"orders":0,"revenue":0.0,"checkouts":0,"conversion":0.0}
-               for t in PAID_TEMPLATES}
+    metrics = {t: {"orders":0,"revenue":0.0,"checkouts":0,"conversion":0.0} for t in PAID_TEMPLATES}
 
     for o in day_orders:
         tmpl = pid_to_tmpl.get(o.get("product_id"))
@@ -163,7 +170,9 @@ def get_polar_metrics(target_date, products):
 
     return metrics
 
-# ── Framer Ranks ───────────────────────────────────────────────────────────────
+
+# ── Framer Ranks ─────────────────────────────────────────────────────────────────
+
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/123.0 Safari/537.36"
 
 def _try_json_list(data, templates):
@@ -174,8 +183,10 @@ def _try_json_list(data, templates):
     )
     if not items:
         return {}
+
     name_keys = ["name","title","template_name","templateName"]
     rank_keys = ["rank","position","rank_position","ranking","order","index"]
+
     result = {}
     for item in items:
         if not isinstance(item, dict):
@@ -192,39 +203,40 @@ def _try_json_list(data, templates):
                     break
     return result
 
+
 def fetch_ranks(paid_templates=None):
     """
     Fetch Framer Marketplace ranks from framer-ranks.com/ranks-data.json.
 
     The JSON has a top-level "items" array (8000+ entries). Each item has:
-      {name, type, authorName, ranks: {"alltime-all": [rank, change], ...}, ...}
+      {name, type, authorName, ranks: {"alltime-all": [rank, change], "lastWeek-all": [rank, change], ...}, ...}
 
-    We match items by name (case-insensitive) against ALL_TEMPLATES and use
-    FRAMER_RANK_KEY (default: "alltime-all") as the rank to store.
+    We match items by name (case-insensitive) against ALL_TEMPLATES
+    and extract both alltime-all and lastWeek-all ranks.
 
-    Fallback: if the JSON URL fails, scan JS bundles for any embedded data URL.
+    Returns {template_name: {"alltime": rank_or_none, "weekly": rank_or_none}}
     """
-    print("      Fetching framer-ranks.com/ranks-data.json…")
-    api_headers = {"User-Agent": UA, "Accept": "application/json, */*",
-                   "Referer": FRAMER_URL}
+    print("    Fetching framer-ranks.com/ranks-data.json…")
+    api_headers = {"User-Agent": UA, "Accept": "application/json, */*", "Referer": FRAMER_URL}
 
     # ── 1. Primary: direct JSON endpoint (discovered via browser network inspection) ──
     try:
         r = requests.get(FRAMER_RANKS_JSON, headers=api_headers, timeout=30)
         r.raise_for_status()
-        data  = r.json()
-        items = data.get("items", [])
-        print(f"      → {len(items)} items in ranks-data.json")
+        data   = r.json()
+        items  = data.get("items", [])
+        print(f"    → {len(items)} items in ranks-data.json")
+
         result = _parse_ranks_json(items, paid_templates)
         if result:
-            print(f"      → matched {len(result)} templates")
+            print(f"    → matched {len(result)} templates")
             return result
-        print("      ⚠  ranks-data.json loaded but no templates matched")
+        print("    ⚠  ranks-data.json loaded but no templates matched")
     except Exception as e:
-        print(f"      ⚠  ranks-data.json failed: {e}")
+        print(f"    ⚠  ranks-data.json failed: {e}")
 
     # ── 2. Fallback: look for data URLs in JS bundles ──
-    print("      Falling back to JS bundle scan…")
+    print("    Falling back to JS bundle scan…")
     try:
         page = requests.get(FRAMER_URL, headers={"User-Agent": UA}, timeout=30)
         page.raise_for_status()
@@ -245,6 +257,7 @@ def fetch_ranks(paid_templates=None):
                         found_urls.add(u)
             except Exception:
                 continue
+
         for url in found_urls:
             try:
                 r = requests.get(url, headers=api_headers, timeout=15)
@@ -253,33 +266,34 @@ def fetch_ranks(paid_templates=None):
                     items = data.get("items", data) if isinstance(data, dict) else data
                     result = _parse_ranks_json(items if isinstance(items, list) else [])
                     if result:
-                        print(f"      → {len(result)} ranks via bundle URL: {url}")
+                        print(f"    → {len(result)} ranks via bundle URL: {url}")
                         return result
             except Exception:
                 continue
     except Exception as e:
-        print(f"      ⚠  Fallback scan failed: {e}")
+        print(f"    ⚠  Fallback scan failed: {e}")
 
-    print("      ⚠  Couldn't fetch ranks. Run --diagnose to investigate.")
+    print("    ⚠  Couldn't fetch ranks. Run --diagnose to investigate.")
     return {}
 
 
 def _parse_ranks_json(items, paid_templates=None):
     """
     Parse items list from ranks-data.json.
-    Each item: {name, type, authorName, ranks: {"alltime-all": [rank, delta], ...}}
+
+    Each item: {name, type, authorName, ranks: {"alltime-all": [rank, delta], "lastWeek-all": [rank, delta], ...}}
 
     Matching priority:
       1. Items whose authorName == AUTHOR_NAME (auto-discovers all your templates)
       2. Items whose name matches a key in paid_templates (explicit fallback list)
 
-    Returns {template_name: rank_int}  — rank is None if the item exists but
-    has no rank yet (new template not yet ranked on framer-ranks.com).
+    Returns {template_name: {"alltime": rank_or_none, "weekly": rank_or_none}}
     """
     result = {}
     for item in items:
         if not isinstance(item, dict):
             continue
+
         item_name   = item.get("name", "")
         item_author = item.get("authorName", "")
         ranks_map   = item.get("ranks", {})
@@ -297,74 +311,104 @@ def _parse_ranks_json(items, paid_templates=None):
         if not matched_name:
             continue
 
-        # Extract rank (may be None for brand-new templates)
-        rank_int = None
+        # Extract alltime rank
+        alltime_rank = None
         if isinstance(ranks_map, dict):
             rank_entry = ranks_map.get(FRAMER_RANK_KEY)
             if isinstance(rank_entry, list) and len(rank_entry) >= 1 and rank_entry[0] is not None:
                 try:
-                    rank_int = int(rank_entry[0])
+                    alltime_rank = int(rank_entry[0])
                 except (ValueError, TypeError):
                     pass
 
-        result[matched_name] = rank_int   # None = template exists but not ranked yet
+        # Extract weekly (lastWeek) rank
+        weekly_rank = None
+        if isinstance(ranks_map, dict):
+            rank_entry = ranks_map.get(FRAMER_RANK_KEY_WEEKLY)
+            if isinstance(rank_entry, list) and len(rank_entry) >= 1 and rank_entry[0] is not None:
+                try:
+                    weekly_rank = int(rank_entry[0])
+                except (ValueError, TypeError):
+                    pass
+
+        result[matched_name] = {"alltime": alltime_rank, "weekly": weekly_rank}
+
     return result
 
-# ── CSV ────────────────────────────────────────────────────────────────────────
+
+# ── CSV ──────────────────────────────────────────────────────────────────────────
+
 def load_csv():
     if not CSV_PATH.exists():
         return []
     with open(CSV_PATH, newline="", encoding="utf-8") as f:
         return list(csv.DictReader(f))
 
+
 def build_rows(existing, target_date, ranks, metrics, paid_templates_info):
     """
-    paid_templates_info: {template_name: price}  — auto-discovered from Polar.sh
-    ranks:               {template_name: rank_int or None}  — from framer-ranks.com
-                         (None = template not yet ranked; missing key = not found at all)
-    metrics:             {template_name: {orders, revenue, checkouts, conversion}}
+    paid_templates_info: {template_name: price} — auto-discovered from Polar.sh
+    ranks: {template_name: {"alltime": rank_or_none, "weekly": rank_or_none}}
+    metrics: {template_name: {orders, revenue, checkouts, conversion}}
 
     All paid templates are always written, even with 0 sales or no rank yet.
     """
     base = [r for r in existing if r["date"] != target_date]
-    prev_date  = (date.fromisoformat(target_date) - timedelta(days=1)).isoformat()
+
+    prev_date = (date.fromisoformat(target_date) - timedelta(days=1)).isoformat()
     prev_ranks = {}
+    prev_ranks_weekly = {}
     for r in existing:
-        if r["date"] == prev_date and r.get("rank"):
-            try:
-                prev_ranks[r["template"]] = int(r["rank"])
-            except (ValueError, TypeError):
-                pass
+        if r["date"] == prev_date:
+            if r.get("rank"):
+                try: prev_ranks[r["template"]] = int(r["rank"])
+                except (ValueError, TypeError): pass
+            if r.get("rank_weekly"):
+                try: prev_ranks_weekly[r["template"]] = int(r["rank_weekly"])
+                except (ValueError, TypeError): pass
 
     new_rows = []
     for tmpl, price in sorted(paid_templates_info.items()):
-        # Rank: may be None (unranked) or missing (not found on framer-ranks.com)
-        rank = ranks.get(tmpl)       # None = unranked; key absent = not found
+        tmpl_ranks = ranks.get(tmpl, {})
 
+        # Alltime rank
+        rank = tmpl_ranks.get("alltime") if isinstance(tmpl_ranks, dict) else tmpl_ranks
         if rank is not None:
-            prev  = prev_ranks.get(tmpl, rank)
+            prev = prev_ranks.get(tmpl, rank)
             delta = prev - rank
         else:
             delta = ""
 
+        # Weekly rank
+        rank_weekly = tmpl_ranks.get("weekly") if isinstance(tmpl_ranks, dict) else None
+        if rank_weekly is not None:
+            prev_w = prev_ranks_weekly.get(tmpl, rank_weekly)
+            delta_weekly = prev_w - rank_weekly
+        else:
+            delta_weekly = ""
+
         m = metrics.get(tmpl, {"orders":0,"revenue":0.0,"checkouts":0,"conversion":0.0})
+
         row = {
-            "date":       target_date,
-            "template":   tmpl,
-            "rank":       rank if rank is not None else "",
-            "change_1d":  delta,
-            "price_type": "paid",
-            "price":      price,
-            "checkouts":  m["checkouts"],
-            "orders":     m["orders"],
-            "revenue":    round(m["revenue"], 2),
-            "conversion": m["conversion"],
+            "date":            target_date,
+            "template":        tmpl,
+            "rank":            rank if rank is not None else "",
+            "change_1d":       delta,
+            "rank_weekly":     rank_weekly if rank_weekly is not None else "",
+            "change_1d_weekly": delta_weekly,
+            "price_type":      "paid",
+            "price":           price,
+            "checkouts":       m["checkouts"],
+            "orders":          m["orders"],
+            "revenue":         round(m["revenue"], 2),
+            "conversion":      m["conversion"],
         }
         new_rows.append(row)
 
     all_rows = base + new_rows
     all_rows.sort(key=lambda r: (r["date"], r["template"]))
     return all_rows
+
 
 def rows_to_text(rows):
     buf = io.StringIO()
@@ -373,6 +417,7 @@ def rows_to_text(rows):
     w.writerows(rows)
     return buf.getvalue()
 
+
 def save_csv(rows, dry_run=False):
     text = rows_to_text(rows)
     if dry_run:
@@ -380,11 +425,12 @@ def save_csv(rows, dry_run=False):
         print("\n".join(text.strip().split("\n")[-25:]))
     else:
         CSV_PATH.write_text(text, encoding="utf-8")
-        print(f"   ✅ CSV → {CSV_PATH}")
+        print(f"  ✅ CSV → {CSV_PATH}")
     return text
 
 
-# ── Diagnose ───────────────────────────────────────────────────────────────────
+# ── Diagnose ─────────────────────────────────────────────────────────────────────
+
 def diagnose():
     SEP = "─" * 60
 
@@ -393,11 +439,12 @@ def diagnose():
         products = polar_get("/products", {"limit": 100}).get("items", [])
         for p in products:
             tmpl = template_name(p["name"])
-            print(f"  [{tmpl}]  {p['name']}  id={p['id']}")
+            print(f"  [{tmpl}] {p['name']}  id={p['id']}")
     except Exception as e:
         print(f"  ERROR: {e}")
 
     today = date.today().isoformat()
+
     print(f"\n{SEP}\nPolar.sh — Orders sample (all dates)\n{SEP}")
     try:
         data   = polar_get("/orders", {"limit": 5, "page": 1})
@@ -418,7 +465,7 @@ def diagnose():
         print(f"  {len(day)} paid orders today (out of {len(all_orders)} total)")
         for o in day:
             tmpl = template_name(o.get("product", {}).get("name", "?"))
-            print(f"    {tmpl:<12}  ${o.get('net_amount',0)/100:.2f}  {o.get('billing_name','')}")
+            print(f"  {tmpl:<12}  ${o.get('net_amount',0)/100:.2f}  {o.get('billing_name','')}")
     except Exception as e:
         print(f"  ERROR: {e}")
 
@@ -429,7 +476,7 @@ def diagnose():
         print(f"  {len(day_co)} checkouts today (out of {len(all_co)} total)")
         for c in day_co:
             tmpl = template_name(c.get("product", {}).get("name", "?"))
-            print(f"    {tmpl:<12}  status={c.get('status')}  {c.get('customer_email','')}")
+            print(f"  {tmpl:<12}  status={c.get('status')}  {c.get('customer_email','')}")
     except Exception as e:
         print(f"  ERROR: {e}")
 
@@ -437,7 +484,7 @@ def diagnose():
     try:
         # Auto-discover paid templates first (same as main flow)
         try:
-            products_d       = polar_get("/products", {"limit": 100}).get("items", [])
+            products_d      = polar_get("/products", {"limit": 100}).get("items", [])
             paid_tmpl_info_d = discover_paid_templates(products_d)
         except Exception:
             paid_tmpl_info_d = {}
@@ -445,15 +492,22 @@ def diagnose():
         api_headers = {"User-Agent": UA, "Accept": "application/json, */*", "Referer": FRAMER_URL}
         r = requests.get(FRAMER_RANKS_JSON, headers=api_headers, timeout=30)
         print(f"  HTTP {r.status_code}  |  {len(r.content):,} bytes")
+
         if r.ok:
             data  = r.json()
             items = data.get("items", [])
             print(f"  Total items: {len(items)}")
+
             matched = _parse_ranks_json(items, list(paid_tmpl_info_d.keys()))
             print(f"  Your templates ({AUTHOR_NAME}) — {len(matched)} found:")
             for tmpl in sorted(matched.keys()):
-                rank = matched[tmpl]
-                print(f"    {tmpl:<14}  {'#' + str(rank) if rank is not None else '(not ranked yet)'}")
+                ranks_info = matched[tmpl]
+                at = ranks_info.get("alltime")
+                wk = ranks_info.get("weekly")
+                at_str = f"#{at}" if at is not None else "(not ranked)"
+                wk_str = f"#{wk}" if wk is not None else "(not ranked)"
+                print(f"    {tmpl:<14} alltime={at_str:<8} weekly={wk_str}")
+
             # Show raw entry for first matched template
             first = next(iter(matched), None)
             if first:
@@ -465,14 +519,17 @@ def diagnose():
                     print(f"    ranks={json.dumps(item.get('ranks', {}), indent=6)}")
     except Exception as e:
         print(f"  ERROR: {e}")
+
     print()
 
-# ── Main ───────────────────────────────────────────────────────────────────────
+
+# ── Main ─────────────────────────────────────────────────────────────────────────
+
 def main():
     ap = argparse.ArgumentParser(description="Easyfast collector")
-    ap.add_argument("--dry-run",        action="store_true")
-    ap.add_argument("--diagnose",       action="store_true")
-    ap.add_argument("--date",           default=None, metavar="YYYY-MM-DD")
+    ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--diagnose", action="store_true")
+    ap.add_argument("--date", default=None, metavar="YYYY-MM-DD")
     ap.add_argument("--also-yesterday", action="store_true")
     args = ap.parse_args()
 
@@ -484,91 +541,107 @@ def main():
     dates  = ([( date.fromisoformat(target) - timedelta(days=1)).isoformat()]
               if args.also_yesterday else []) + [target]
 
-    print(f"\n🚀  Easyfast Collector  —  {', '.join(dates)}")
+    print(f"\n🚀 Easyfast Collector — {', '.join(dates)}")
     print("━" * 52)
 
     # ── 1. Discover paid templates from Polar.sh ──────────────────────────────
-    print("\n🔑  Polar.sh products…")
-    products         = []
-    paid_tmpl_info   = {}   # {template_name: price}
+    print("\n🔑 Polar.sh products…")
+    products       = []
+    paid_tmpl_info = {}  # {template_name: price}
     try:
-        products       = polar_get("/products", {"limit": 100, "is_archived": False}).get("items", [])
+        products = polar_get("/products", {"limit": 100, "is_archived": False}).get("items", [])
         paid_tmpl_info = discover_paid_templates(products)
-        print(f"   {len(paid_tmpl_info)} paid templates auto-discovered:")
+        print(f"  {len(paid_tmpl_info)} paid templates auto-discovered:")
         for t, p in sorted(paid_tmpl_info.items()):
-            print(f"      {t:<14}  ${p}")
+            print(f"    {t:<14} ${p}")
     except Exception as e:
-        print(f"   ❌ {e}")
+        print(f"  ❌ {e}")
 
     if not paid_tmpl_info:
-        print("   ⚠  No paid templates found — nothing to collect.")
+        print("  ⚠  No paid templates found — nothing to collect.")
         return
 
     # ── 2. Fetch ranks ────────────────────────────────────────────────────────
-    print("\n🏆  Framer ranks…")
+    global PAID_TEMPLATES
+    PAID_TEMPLATES = paid_tmpl_info
+
+    print("\n🏆 Framer ranks…")
     ranks = {}
     try:
         ranks = fetch_ranks(list(paid_tmpl_info.keys()))
-        ranked   = {k: v for k, v in ranks.items() if v is not None}
-        unranked = [k for k, v in ranks.items() if v is None]
-        print(f"   {len(ranked)}/{len(paid_tmpl_info)} templates ranked:")
-        for name, rank in sorted(ranked.items(), key=lambda x: x[1]):
-            print(f"      #{rank:<6}  {name}")
+        ranked_alltime = {k: v.get("alltime") for k, v in ranks.items() if v.get("alltime") is not None}
+        ranked_weekly  = {k: v.get("weekly") for k, v in ranks.items() if v.get("weekly") is not None}
+        unranked = [k for k, v in ranks.items() if v.get("alltime") is None and v.get("weekly") is None]
+
+        print(f"  {len(ranked_alltime)}/{len(paid_tmpl_info)} templates ranked (alltime):")
+        for name, rank in sorted(ranked_alltime.items(), key=lambda x: x[1]):
+            wk = ranks[name].get("weekly")
+            wk_str = f"  weekly #{wk}" if wk is not None else ""
+            print(f"    #{rank:<6} {name}{wk_str}")
+        if ranked_weekly:
+            print(f"  {len(ranked_weekly)}/{len(paid_tmpl_info)} templates ranked (weekly):")
+            for name, rank in sorted(ranked_weekly.items(), key=lambda x: x[1]):
+                print(f"    #{rank:<6} {name}")
         if unranked:
-            print(f"   Not ranked yet: {', '.join(unranked)}")
+            print(f"  Not ranked yet: {', '.join(unranked)}")
     except Exception as e:
-        print(f"   ❌ {e}")
+        print(f"  ❌ {e}")
 
     existing = load_csv()
-    rows = list(existing)
+    rows     = list(existing)
 
-    # ── 3. Fetch all Polar orders/checkouts once ───────────────────────────────
-    print("\n📦  Polar.sh data…")
+    # ── 3. Fetch all Polar orders/checkouts once ──────────────────────────────
+    print("\n📦 Polar.sh data…")
     all_orders, all_checkouts = [], []
     pid_to_tmpl = {p["id"]: template_name(p["name"]) for p in products
                    if template_name(p["name"]) in paid_tmpl_info}
+
     if products:
         try:
             all_orders    = fetch_all_pages("/orders")
             all_checkouts = fetch_all_pages("/checkouts")
-            print(f"   {len(all_orders)} total orders, {len(all_checkouts)} total checkouts")
+            print(f"  {len(all_orders)} total orders, {len(all_checkouts)} total checkouts")
         except Exception as e:
-            print(f"   ❌ {e}")
+            print(f"  ❌ {e}")
 
     # ── 4. Per-date aggregation ───────────────────────────────────────────────
     for d in dates:
-        print(f"\n📅  {d}")
-        metrics = {t: {"orders":0,"revenue":0.0,"checkouts":0,"conversion":0.0}
-                   for t in paid_tmpl_info}
+        print(f"\n📅 {d}")
+
+        metrics = {t: {"orders":0,"revenue":0.0,"checkouts":0,"conversion":0.0} for t in paid_tmpl_info}
 
         day_orders    = [o for o in all_orders    if o.get("created_at","").startswith(d) and o.get("paid")]
         day_checkouts = [c for c in all_checkouts if c.get("created_at","").startswith(d)]
-        print(f"      {len(day_orders)} orders, {len(day_checkouts)} checkouts")
+        print(f"  {len(day_orders)} orders, {len(day_checkouts)} checkouts")
 
         for o in day_orders:
             tmpl = pid_to_tmpl.get(o.get("product_id"))
             if tmpl and tmpl in metrics:
                 metrics[tmpl]["orders"]  += 1
                 metrics[tmpl]["revenue"] += o.get("net_amount", 0) / 100
+
         for c in day_checkouts:
             tmpl = pid_to_tmpl.get(c.get("product_id"))
             if tmpl and tmpl in metrics:
                 metrics[tmpl]["checkouts"] += 1
+
         for m in metrics.values():
             if m["checkouts"] > 0:
                 m["conversion"] = round(m["orders"] / m["checkouts"] * 100, 2)
 
         for t, m in metrics.items():
             if m["orders"] > 0 or m["checkouts"] > 0:
-                print(f"      {t:<14} {m['orders']} orders  "
+                print(f"    {t:<14} {m['orders']} orders "
                       f"${m['revenue']:.0f}  {m['checkouts']} checkouts  {m['conversion']}% conv")
 
         rows = build_rows(rows, d, ranks, metrics, paid_tmpl_info)
 
-    print("\n💾  Saving…")
+    print("\n💾 Saving…")
     csv_text = save_csv(rows, dry_run=args.dry_run)
+
     # Dashboard now reads CSV via fetch — no need to update HTML
-    print("\n✅  Done!\n")
+    print("\n✅ Done!\n")
+
 
 if __name__ == "__main__":
     main()
