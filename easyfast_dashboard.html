@@ -212,8 +212,17 @@ function buildTemplates(rows, forDate) {
 }
 
 // Helper: get the active rank/change based on current rankMode
-function getRank(t) { return rankMode === 'weekly' ? t.rank_weekly : t.rank; }
-function getChange(t) { return rankMode === 'weekly' ? t.change_1d_weekly : t.change_1d; }
+// Falls back to alltime if weekly data is not available (0 means no data)
+function getRank(t) {
+  if (rankMode === 'weekly' && t.rank_weekly > 0) return t.rank_weekly;
+  if (rankMode === 'weekly' && t.rank_weekly === 0) return t.rank; // fallback
+  return t.rank;
+}
+function getChange(t) {
+  if (rankMode === 'weekly' && t.rank_weekly > 0) return t.change_1d_weekly;
+  if (rankMode === 'weekly' && t.rank_weekly === 0) return t.change_1d; // fallback
+  return t.change_1d;
+}
 
 function loadData(csvText) {
   allData = parseCSV(csvText);
@@ -540,7 +549,9 @@ function renderChart() {
     rangeDates.forEach(d => {
       const row = allData.find(r => r.date === d && r.template === name);
       if (row) {
-        const rkVal = rankMode === 'weekly' ? (parseInt(row.rank_weekly) || 0) : (parseInt(row.rank) || 0);
+        const weeklyRk  = parseInt(row.rank_weekly) || 0;
+        const alltimeRk = parseInt(row.rank) || 0;
+        const rkVal = rankMode === 'weekly' ? (weeklyRk > 0 ? weeklyRk : alltimeRk) : alltimeRk;
         dataMap[name][d] = {
           rank:     rkVal,
           orders:   parseInt(row.orders)    || 0,
