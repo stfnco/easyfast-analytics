@@ -4,8 +4,8 @@ on:
   schedule:
     # 7:00 AM Moscow time (UTC+3) = 04:00 UTC
     - cron: '0 4 * * *'
-        # 19:00 PM Moscow time (UTC+3) = 16:00 UTC
-            - cron: '0 16 * * *'
+    # 19:00 PM Moscow time (UTC+3) = 16:00 UTC
+    - cron: '0 16 * * *'
   workflow_dispatch:
     # Allows manual run from GitHub UI (button "Run workflow")
 
