@@ -563,19 +563,19 @@ function renderChart() {
   });
 
   // Axis ranges (rank=0 means "unranked" — exclude from scale, draw at bottom)
-  let rankMin = Infinity, rankMax = -Infinity, ordersMax = 0, visitorsMax = 0;
+  let rankMin = Infinity, rankMax = -Infinity, revenueMax = 0, visitorsMax = 0;
   visibleNames.forEach(name => rangeDates.forEach(d => {
     const pt = dataMap[name][d];
     if (!pt) return;
     if (pt.rank > 0) { rankMin = Math.min(rankMin, pt.rank); rankMax = Math.max(rankMax, pt.rank); }
-    ordersMax = Math.max(ordersMax, pt.orders);
+    revenueMax = Math.max(revenueMax, pt.revenue);
     if (pt.visitors !== null) visitorsMax = Math.max(visitorsMax, pt.visitors);
   }));
   if (!isFinite(rankMin)) { rankMin = 1; rankMax = 100; }
   const rng = rankMax - rankMin || 50;
   rankMin = Math.max(1, rankMin - rng * 0.2);
   rankMax = rankMax + rng * 0.2;
-  ordersMax   = Math.max(2, ordersMax + 1);
+  revenueMax  = Math.max(50, revenueMax + Math.ceil(revenueMax * 0.15));
   visitorsMax = Math.max(5, visitorsMax + Math.ceil(visitorsMax * 0.15));
 
   // Layout — smaller padding on mobile
@@ -591,7 +591,7 @@ function renderChart() {
 
   const xOf     = i => PAD.left + (rangeDates.length === 1 ? cW / 2 : (i / (rangeDates.length - 1)) * cW);
   const yOfRank = r => r === 0 ? PAD.top + cH : PAD.top + ((r - rankMin) / (rankMax - rankMin)) * cH;
-  const yOfOrd  = o => PAD.top  + cH - (o / ordersMax) * cH;
+  const yOfRev  = r => PAD.top  + cH - (r / revenueMax) * cH;
   const yOfVis  = v => PAD.top  + cH - (v / visitorsMax) * cH;
 
   // Grid
@@ -646,12 +646,12 @@ function renderChart() {
     const cx = xOf(di);
     visibleNames.forEach((name, ni) => {
       const pt = dataMap[name][d];
-      if (!pt || pt.orders === 0) return;
+      if (!pt || pt.revenue <= 0) return;
       const c   = colorOf(name);
       const dimmed = ht && ht !== name;
       ctx.globalAlpha = dimmed ? 0.1 : 1;
       const bx  = cx - barGroupW / 2 + ni * barW;
-      const by  = yOfOrd(pt.orders);
+      const by  = yOfRev(pt.revenue);
       const bh  = PAD.top + cH - by;
       const bwi = barW - 2;
 
@@ -773,7 +773,7 @@ function renderChart() {
         chartTip.innerHTML = `<strong>${nearest.name}</strong> · ${lbl}<br>Visitors: ${nearest.visitors}`;
       } else {
         let html = `<strong>${nearest.name}</strong> · ${lbl}<br>Rank #${nearest.rank.toLocaleString()}<br>Orders: ${nearest.orders}`;
-        if (nearest.revenue > 0) html += `<br>Revenue: $${nearest.revenue.toLocaleString()}`;
+        html += `<br>Revenue: $${(nearest.revenue || 0).toLocaleString()}`;
         if (nearest.visitors != null) html += `<br>Visitors: ${nearest.visitors}`;
         chartTip.innerHTML = html;
       }
