@@ -11,8 +11,8 @@ on:
 
 permissions:
   contents: write
-  
-  jobs:
+
+jobs:
   collect:
     runs-on: ubuntu-latest
 
