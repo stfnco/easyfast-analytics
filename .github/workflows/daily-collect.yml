@@ -9,7 +9,10 @@ on:
   workflow_dispatch:
     # Allows manual run from GitHub UI (button "Run workflow")
 
-jobs:
+permissions:
+  contents: write
+  
+  jobs:
   collect:
     runs-on: ubuntu-latest
 
