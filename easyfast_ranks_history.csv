@@ -303,3 +303,8 @@ date,template,rank,change_1d,rank_weekly,change_1d_weekly,price_type,price,check
 2026-05-24,Makro,,,,,paid,129,0,0,0.0,0.0
 2026-05-24,Powder,,,,,paid,129,2,0,0.0,0.0
 2026-05-24,Quorum,,,,,paid,129,0,0,0.0,0.0
+2026-05-25,Cello,,,,,paid,89,0,0,0.0,0.0
+2026-05-25,Dispatch,,,,,paid,129,0,0,0.0,0.0
+2026-05-25,Makro,,,,,paid,129,1,0,0.0,0.0
+2026-05-25,Powder,,,,,paid,129,2,1,99.0,50.0
+2026-05-25,Quorum,,,,,paid,129,0,0,0.0,0.0
