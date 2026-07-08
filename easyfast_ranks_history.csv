@@ -524,7 +524,7 @@ date,template,rank,change_1d,rank_weekly,change_1d_weekly,price_type,price,check
 2026-07-07,Powder,,,,,paid,129,3,1,179.0,33.33
 2026-07-07,Quorum,,,,,paid,129,2,0,0.0,0.0
 2026-07-08,Cello,,,,,paid,89,0,0,0.0,0.0
-2026-07-08,Dispatch,,,,,paid,129,0,0,0.0,0.0
-2026-07-08,Makro,,,,,paid,129,0,0,0.0,0.0
-2026-07-08,Powder,,,,,paid,129,0,0,0.0,0.0
-2026-07-08,Quorum,,,,,paid,129,0,0,0.0,0.0
+2026-07-08,Dispatch,,,,,paid,129,1,0,0.0,0.0
+2026-07-08,Makro,,,,,paid,129,3,1,179.0,33.33
+2026-07-08,Powder,,,,,paid,129,2,0,0.0,0.0
+2026-07-08,Quorum,,,,,paid,129,1,0,0.0,0.0
