@@ -590,9 +590,15 @@ date,template,rank,change_1d,rank_weekly,change_1d_weekly,price_type,price,check
 2026-07-20,Powder,,,,,paid,199,40,0,0.0,0.0
 2026-07-20,Quorum,,,,,paid,199,2,0,0.0,0.0
 2026-07-20,Unlock Full Collection,,,,,paid,299,9,0,0.0,0.0
-2026-07-21,Cello,,,,,paid,199,3,0,0.0,0.0
-2026-07-21,Dispatch,,,,,paid,199,3,0,0.0,0.0
+2026-07-21,Cello,,,,,paid,199,4,0,0.0,0.0
+2026-07-21,Dispatch,,,,,paid,199,5,0,0.0,0.0
 2026-07-21,Makro,,,,,paid,199,4,0,0.0,0.0
-2026-07-21,Powder,,,,,paid,199,4,0,0.0,0.0
+2026-07-21,Powder,,,,,paid,199,5,0,0.0,0.0
 2026-07-21,Quorum,,,,,paid,199,3,0,0.0,0.0
 2026-07-21,Unlock Full Collection,,,,,paid,299,2,1,299.0,50.0
+2026-07-22,Cello,,,,,paid,199,3,0,0.0,0.0
+2026-07-22,Dispatch,,,,,paid,199,0,0,0.0,0.0
+2026-07-22,Makro,,,,,paid,199,1,0,0.0,0.0
+2026-07-22,Powder,,,,,paid,199,3,1,140.57,33.33
+2026-07-22,Quorum,,,,,paid,199,1,0,0.0,0.0
+2026-07-22,Unlock Full Collection,,,,,paid,299,0,0,0.0,0.0
